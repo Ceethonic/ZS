@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Zgłoś Spam</title>
+    
+    <!-- Office JS API -->
+    <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 16px;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+        .button {
+            background-color: #0078d4;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .button:hover {
+            background-color: #005a9e;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+            display: none;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+            display: none;
+        }
+    </style>
+    
+    <script type="text/javascript">
+        // Inicjalizacja Office JS
+        Office.onReady(function(info) {
+            // Sprawdzenie typu platformy
+            checkPlatform();
+        });
+        
+        function checkPlatform() {
+            // Sprawdź, czy to urządzenie mobilne
+            var isMobile = false;
+            
+            if (Office.context.diagnostics && Office.context.diagnostics.platform) {
+                // Sprawdź platformę na podstawie diagnostyki
+                var platform = Office.context.diagnostics.platform.toLowerCase();
+                isMobile = platform === "ios" || platform === "android";
+            } else if (Office.context.mailbox && Office.context.mailbox.diagnostics) {
+                // Alternatywny sposób sprawdzenia platformy
+                var hostName = Office.context.mailbox.diagnostics.hostName;
+                isMobile = hostName === "Outlook_iOS" || hostName === "Outlook_Android";
+            }
+            
+            // Pokaż odpowiedni komunikat
+            if (isMobile) {
+                document.getElementById("mobileContent").style.display = "block";
+                document.getElementById("desktopContent").style.display = "none";
+            } else {
+                document.getElementById("mobileContent").style.display = "none";
+                document.getElementById("desktopContent").style.display = "block";
+            }
+        }
+        
+        // Funkcja uruchamiana po kliknięciu przycisku
+        function reportCurrentMessage() {
+            // Pobierz bieżącą wiadomość
+            if (Office.context.mailbox && Office.context.mailbox.item) {
+                // Wywołanie funkcji z functions.html
+                window.location.href = "functions.html?action=reportSpam";
+            } else {
+                document.getElementById("errorMessage").textContent = "Nie można uzyskać dostępu do wiadomości.";
+                document.getElementById("errorMessage").style.display = "block";
+            }
+        }
+    </script>
+</head>
+
+<body>
+    <div class="container">
+        <div id="mobileContent" style="display: none;">
+            <h1>Zgłoś Spam</h1>
+            <p>Ta wtyczka pozwala zgłosić bieżącą wiadomość jako spam do działu bezpieczeństwa. Zgłoszenie zostanie automatycznie przesłane wraz z kopią oryginalnej wiadomości.</p>
+            <button class="button" onclick="reportCurrentMessage()">Zgłoś jako spam</button>
+            <p class="success" id="successMessage"></p>
+            <p class="error" id="errorMessage"></p>
+        </div>
+        
+        <div id="desktopContent" style="display: none;">
+            <h1>Funkcja niedostępna</h1>
+            <p>Ta wtyczka jest dostępna tylko na urządzeniach mobilnych (iOS i Android).</p>
+            <p>Prosimy korzystać z aplikacji Outlook na urządzeniu mobilnym.</p>
+        </div>
+    </div>
+</body>
+</html>
