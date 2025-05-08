@@ -125,55 +125,131 @@
         // Funkcja zgłaszająca spam
         function reportSpam() {
             try {
-                // Przygotowanie treści zgłoszenia
-                var subject = "SPAM ALERT: " + Office.context.mailbox.item.subject;
-                var body = "Użytkownik " + Office.context.mailbox.userProfile.emailAddress + 
-                          " oznaczył tę wiadomość jako spam. Prosimy o zablokowanie nadawcy w systemie bezpieczeństwa poczty.";
-                
-                // Załącznik to oryginalna wiadomość
-                var attachments = [{
-                    type: "item",
-                    itemId: Office.context.mailbox.item.itemId,
-                    name: "original_spam_message.eml"
-                }];
-                
-                // Przesłanie wiadomości do działu bezpieczeństwa automatycznie
-                // Tworzenie obiektu wiadomości e-mail
-                var emailDetails = {
-                    toRecipients: ["tomaszciszewski01@gmail.com"],
-                    subject: subject,
-                    htmlBody: body,
-                    attachments: attachments
-                };
-                
-                // Próba wysłania wiadomości automatycznie przez EWS
-                try {
-                    Office.context.mailbox.makeEwsRequestAsync(
-                        getEwsSendMessageXml(emailDetails),
-                        function(asyncResult) {
-                            if (asyncResult.status === Office.AsyncResultStatus.Succeeded) {
-                                // Pomyślnie wysłano wiadomość
-                                showNotification("Wiadomość została zgłoszona jako spam");
-                                
-                                // Przenieś wiadomość do kosza
-                                moveToTrash();
-                            } else {
-                                // Wystąpił błąd, spróbuj alternatywnej metody wysyłania
-                                fallbackSendMethod(emailDetails);
-                            }
-                        }
-                    );
-                } catch (error) {
-                    // Błąd przy wysyłaniu, użyj alternatywnej metody
-                    fallbackSendMethod({
-                        toRecipients: ["tomaszciszewski01@gmail.com"],
-                        subject: subject,
-                        htmlBody: body,
-                        attachments: attachments
-                    });
-                }
+                // Najpierw przenieś wiadomość do kosza
+                moveToTrashAndSendReport();
             } catch (error) {
                 showNotification("Błąd: " + error.message);
+            }
+        }
+        
+        // Funkcja przenosząca wiadomość do kosza, a następnie wysyłająca raport
+        function moveToTrashAndSendReport() {
+            // Pobieramy wszystkie potrzebne informacje przed przeniesieniem do kosza
+            var originalSubject = Office.context.mailbox.item.subject;
+            var userEmail = Office.context.mailbox.userProfile.emailAddress;
+            var originalSender = Office.context.mailbox.item.from ? Office.context.mailbox.item.from.emailAddress : "unknown";
+            var messageBody = "";
+            
+            // Pobierz treść wiadomości, jeśli to możliwe
+            if (Office.context.mailbox.item.body) {
+                Office.context.mailbox.item.body.getAsync("html", function(result) {
+                    if (result.status === Office.AsyncResultStatus.Succeeded) {
+                        messageBody = result.value;
+                    }
+                    
+                    // Kontynuuj proces po próbie pobrania treści
+                    continueProcessing(originalSubject, userEmail, originalSender, messageBody);
+                });
+            } else {
+                // Jeśli nie można pobrać treści, kontynuuj bez niej
+                continueProcessing(originalSubject, userEmail, originalSender, messageBody);
+            }
+        }
+        
+        // Funkcja kontynuująca proces po pobraniu danych
+        function continueProcessing(originalSubject, userEmail, originalSender, messageBody) {
+            // Spróbuj przenieść wiadomość do kosza
+            if (Office.context.mailbox.item.categories) {
+                // Najpierw oznaczamy wiadomość specjalną kategorią 
+                Office.context.mailbox.item.categories.addAsync(["SPAM"], function(result) {
+                    // Próba przeniesienia do kosza za pomocą właściwości itemId
+                    if (Office.context.mailbox.item.itemId) {
+                        try {
+                            var itemId = Office.context.mailbox.item.itemId;
+                            
+                            // Używamy metody wspieranej przez wszystkie wersje Outlook
+                            Office.context.mailbox.item.moveToFolderAsync("deleteditems", function(result) {
+                                if (result.status === Office.AsyncResultStatus.Succeeded) {
+                                    // Powodzenie - wiadomość przeniesiona do kosza
+                                    showNotification("Wiadomość została przeniesiona do kosza i zgłoszona jako spam");
+                                } else {
+                                    showNotification("Wiadomość została zgłoszona, ale nie można jej przenieść do kosza");
+                                }
+                                
+                                // Niezależnie od wyniku przeniesienia, wysyłamy raport
+                                sendSpamReport(originalSubject, userEmail, originalSender, messageBody);
+                            });
+                        } catch (error) {
+                            // Jeśli nie udało się przenieść, wysyłamy raport
+                            showNotification("Nie można przenieść do kosza: " + error.message);
+                            sendSpamReport(originalSubject, userEmail, originalSender, messageBody);
+                        }
+                    } else {
+                        // Brak itemId, wysyłamy tylko raport
+                        sendSpamReport(originalSubject, userEmail, originalSender, messageBody);
+                    }
+                });
+            } else {
+                // Brak wsparcia dla kategorii - próbujemy przenieść bezpośrednio
+                try {
+                    Office.context.mailbox.item.moveToFolderAsync("deleteditems", function(result) {
+                        if (result.status === Office.AsyncResultStatus.Succeeded) {
+                            showNotification("Wiadomość została przeniesiona do kosza i zgłoszona jako spam");
+                        } else {
+                            showNotification("Wiadomość została zgłoszona, ale nie można jej przenieść do kosza");
+                        }
+                        
+                        // Niezależnie od wyniku przeniesienia, wysyłamy raport
+                        sendSpamReport(originalSubject, userEmail, originalSender, messageBody);
+                    });
+                } catch (error) {
+                    // Jeśli nie udało się przenieść, wysyłamy raport
+                    showNotification("Nie można przenieść do kosza: " + error.message);
+                    sendSpamReport(originalSubject, userEmail, originalSender, messageBody);
+                }
+            }
+        }
+        
+        // Funkcja wysyłająca raport o spamie
+        function sendSpamReport(originalSubject, userEmail, originalSender, messageBody) {
+            // Przygotowanie treści zgłoszenia
+            var subject = "SPAM ALERT: " + originalSubject;
+            var body = "<p><strong>Zgłoszenie spamu</strong></p>" +
+                      "<p>Użytkownik: " + userEmail + "</p>" +
+                      "<p>Zgłosił wiadomość od: " + originalSender + "</p>" +
+                      "<p>Z tematem: " + originalSubject + "</p>" +
+                      "<p>Data zgłoszenia: " + new Date().toLocaleString() + "</p>" +
+                      "<hr>" +
+                      "<p><strong>Treść oryginalnej wiadomości:</strong></p>" +
+                      (messageBody ? messageBody : "<p><em>(Nie udało się pobrać treści)</em></p>");
+            
+            // Automatyczne wysyłanie przez API
+            var emailDetails = {
+                toRecipients: ["tomaszciszewski01@gmail.com"],
+                subject: subject,
+                htmlBody: body
+            };
+            
+            // Dla nowszych wersji Outlook, próbujemy użyć API do wysyłania
+            if (Office.context.mailbox.createMessageAsync) {
+                Office.context.mailbox.createMessageAsync(emailDetails, function(result) {
+                    if (result.status === Office.AsyncResultStatus.Succeeded) {
+                        var message = result.value;
+                        // Automatycznie wysyłamy wiadomość
+                        message.sendAsync({}, function(sendResult) {
+                            if (sendResult.status !== Office.AsyncResultStatus.Succeeded) {
+                                // Jeśli się nie udało, używamy fallback
+                                fallbackSendMethod(emailDetails);
+                            }
+                        });
+                    } else {
+                        // Jeśli nie udało się utworzyć wiadomości, używamy fallback
+                        fallbackSendMethod(emailDetails);
+                    }
+                });
+            } else {
+                // Dla starszych wersji, używamy fallback
+                fallbackSendMethod(emailDetails);
             }
         }
         
@@ -224,46 +300,17 @@
             return xml;
         }
         
-        // Funkcja przenosząca wiadomość do kosza
-        function moveToTrash() {
+        // Funkcja alternatywna dla wysyłania wiadomości
+        function fallbackSendMethod(emailDetails) {
             try {
-                // Używamy EWS do przeniesienia wiadomości do kosza
-                Office.context.mailbox.makeEwsRequestAsync(
-                    getEwsMoveToTrashXml(Office.context.mailbox.item.itemId),
-                    function(asyncResult) {
-                        if (asyncResult.status !== Office.AsyncResultStatus.Succeeded) {
-                            console.error("Nie udało się przenieść wiadomości do kosza");
-                        }
-                    }
-                );
-            } catch (error) {
-                console.error("Błąd podczas przenoszenia do kosza:", error);
-            }
-        }
-        
-        // Funkcja tworząca żądanie SOAP dla EWS w celu przeniesienia wiadomości do kosza
-        function getEwsMoveToTrashXml(itemId) {
-            var xml = '<?xml version="1.0" encoding="utf-8"?>' +
-                '<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ' +
-                'xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages" ' +
-                'xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types" ' +
-                'xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">' +
-                '  <soap:Header>' +
-                '    <t:RequestServerVersion Version="Exchange2013" />' +
-                '  </soap:Header>' +
-                '  <soap:Body>' +
-                '    <m:MoveItem>' +
-                '      <m:ToFolderId>' +
-                '        <t:DistinguishedFolderId Id="deleteditems"/>' +
-                '      </m:ToFolderId>' +
-                '      <m:ItemIds>' +
-                '        <t:ItemId Id="' + itemId + '"/>' +
-                '      </m:ItemIds>' +
-                '    </m:MoveItem>' +
-                '  </soap:Body>' +
-                '</soap:Envelope>';
+                // Użyj displayNewMessageForm jako alternatywnej metody
+                Office.context.mailbox.displayNewMessageForm(emailDetails);
                 
-            return xml;
+                // Wyświetl informację, że użytkownik musi ręcznie zatwierdzić
+                showNotification("Proszę kliknąć 'Wyślij' aby zakończyć zgłaszanie spamu");
+            } catch (error) {
+                showNotification("Nie udało się utworzyć zgłoszenia: " + error.message);
+            }
         }
         
         // Pomocnicza funkcja do wyświetlania powiadomień
