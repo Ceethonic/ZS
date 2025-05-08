@@ -138,41 +138,40 @@
                 }];
                 
                 // Przesłanie wiadomości do działu bezpieczeństwa automatycznie
-                Office.context.mailbox.item.getAttachmentsAsync(function(result) {
-                    if (result.status === Office.AsyncResultStatus.Succeeded) {
-                        // Tworzenie obiektu wiadomości e-mail
-                        var emailDetails = {
-                            toRecipients: ["tomaszciszewski01@gmail.com"],
-                            subject: subject,
-                            htmlBody: body,
-                            attachments: attachments
-                        };
-                        
-                        // Wysyłanie wiadomości automatycznie
-                        Office.context.mailbox.makeEwsRequestAsync(
-                            getEwsSendMessageXml(emailDetails),
-                            function(asyncResult) {
-                                if (asyncResult.status === Office.AsyncResultStatus.Succeeded) {
-                                    // Pomyślnie wysłano wiadomość
-                                    showNotification("Wiadomość została zgłoszona jako spam");
-                                    
-                                    // Przenieś wiadomość do kosza
-                                    moveToTrash();
-                                } else {
-                                    // Wystąpił błąd, spróbuj alternatywnej metody wysyłania
-                                    fallbackSendMethod(emailDetails);
-                                }
+                // Tworzenie obiektu wiadomości e-mail
+                var emailDetails = {
+                    toRecipients: ["tomaszciszewski01@gmail.com"],
+                    subject: subject,
+                    htmlBody: body,
+                    attachments: attachments
+                };
+                
+                // Próba wysłania wiadomości automatycznie przez EWS
+                try {
+                    Office.context.mailbox.makeEwsRequestAsync(
+                        getEwsSendMessageXml(emailDetails),
+                        function(asyncResult) {
+                            if (asyncResult.status === Office.AsyncResultStatus.Succeeded) {
+                                // Pomyślnie wysłano wiadomość
+                                showNotification("Wiadomość została zgłoszona jako spam");
+                                
+                                // Przenieś wiadomość do kosza
+                                moveToTrash();
+                            } else {
+                                // Wystąpił błąd, spróbuj alternatywnej metody wysyłania
+                                fallbackSendMethod(emailDetails);
                             }
-                        );
-                    } else {
-                        // Błąd przy pobieraniu załączników, spróbuj alternatywnej metody
-                        fallbackSendMethod({
-                            toRecipients: ["tomaszciszewski01@gmail.com"],
-                            subject: subject,
-                            htmlBody: body
-                        });
-                    }
-                });
+                        }
+                    );
+                } catch (error) {
+                    // Błąd przy wysyłaniu, użyj alternatywnej metody
+                    fallbackSendMethod({
+                        toRecipients: ["tomaszciszewski01@gmail.com"],
+                        subject: subject,
+                        htmlBody: body,
+                        attachments: attachments
+                    });
+                }
             } catch (error) {
                 showNotification("Błąd: " + error.message);
             }
