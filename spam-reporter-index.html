@@ -155,7 +155,6 @@
             const tempDiv = document.createElement("div");
             tempDiv.innerHTML = resultHtml.value;
             cleaned = tempDiv.textContent || tempDiv.innerText || resultHtml.value;
-
             if (cleaned.length > 3000) {
               cleaned = cleaned.substring(0, 2997) + "...";
             }
@@ -185,11 +184,27 @@
             ...links.map(link => "- " + link),
             "",
             "Prosimy o analizę tej wiadomości pod kątem zagrożeń bezpieczeństwa."
-          ].join("\\n");
+          ].join("\n");
 
           const subjectEncoded = encodeURIComponent("SPAM: " + data.subject);
           const bodyEncoded = encodeURIComponent(reportBody);
-          window.location.href = `mailto:tomaszciszewski01@gmail.com?subject=${subjectEncoded}&body=${bodyEncoded}`;
+
+          const host = Office.context.mailbox.diagnostics.hostName;
+          if (host === "OutlookIOS" || host === "OutlookAndroid") {
+            const a = document.createElement("a");
+            a.href = `mailto:tomaszciszewski01@gmail.com?subject=${subjectEncoded}&body=${bodyEncoded}`;
+            a.style.display = "none";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          } else {
+            Office.context.mailbox.displayNewMessageForm({
+              toRecipients: ["tomaszciszewski01@gmail.com"],
+              subject: "SPAM: " + data.subject,
+              body: reportBody
+            });
+          }
+
           showMessage("Otworzono wiadomość z gotowym zgłoszeniem.");
           loading.style.display = "none";
         });
