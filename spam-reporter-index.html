@@ -81,27 +81,9 @@
     .footer a:hover {
       text-decoration: underline;
     }
-    @media (max-width: 600px) {
-      body {
-        padding: 16px;
-      }
-      .container {
-        padding: 24px 16px;
-      }
-      h1 {
-        font-size: 20px;
-      }
-      p {
-        font-size: 14px;
-      }
-    }
   </style>
 </head>
 <body>
-  <div style="text-align: right; margin-bottom: 10px;">
-    <a href="spam-reporter-index.html"><img src="https://flagcdn.com/pl.svg" alt="PL" width="24" style="margin-right: 6px; vertical-align: middle;"></a>
-    <a href="spam-reporter-indexENG.html"><img src="https://flagcdn.com/gb.svg" alt="EN" width="24" style="vertical-align: middle;"></a>
-  </div>
   <div class="container">
     <div class="logo-container">
       <a href="https://ratels.pl" target="_blank">
@@ -141,9 +123,7 @@
     }
 
     Office.onReady(() => {
-      const btn = document.getElementById("reportBtn");
-      if (!btn) return;
-      btn.addEventListener("click", () => {
+      document.getElementById("reportBtn").addEventListener("click", () => {
         const loading = document.getElementById("loadingIndicator");
         loading.style.display = "block";
 
@@ -168,72 +148,53 @@
         }
 
         item.body.getAsync(Office.CoercionType.Html, function(resultHtml) {
+          let cleaned = "(brak treści)";
+          let links = [];
+
           if (resultHtml.status === Office.AsyncResultStatus.Succeeded && resultHtml.value) {
-            processBodyAndSendEmail(data, resultHtml.value, true);
-          } else {
-            item.body.getAsync(Office.CoercionType.Text, function(resultText) {
-              if (resultText.status === Office.AsyncResultStatus.Succeeded) {
-                processBodyAndSendEmail(data, resultText.value, false);
-              } else {
-                processBodyAndSendEmail(data, "(nie udało się pobrać treści wiadomości)", false);
-              }
+            const tempDiv = document.createElement("div");
+            tempDiv.innerHTML = resultHtml.value;
+            cleaned = tempDiv.textContent || tempDiv.innerText || resultHtml.value;
+
+            if (cleaned.length > 3000) {
+              cleaned = cleaned.substring(0, 2997) + "...";
+            }
+
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(resultHtml.value, 'text/html');
+            const anchors = doc.querySelectorAll('a[href]');
+            anchors.forEach(a => {
+              const href = a.getAttribute('href');
+              if (href && !links.includes(href)) links.push(href);
             });
           }
+
+          const reportBody = [
+            "Zgłoszenie spamu - szczegóły wiadomości:",
+            "",
+            `Temat: ${data.subject}`,
+            `Nadawca: ${data.sender}`,
+            `Data otrzymania: ${data.receivedTime}`,
+            `ID wiadomości: ${data.messageId}`,
+            "",
+            "--- Treść wiadomości ---",
+            cleaned,
+            "--- Koniec treści ---",
+            "",
+            links.length > 0 ? "Wiadomość zawierała następujące linki:" : "Nie znaleziono linków w treści wiadomości.",
+            ...links.map(link => "- " + link),
+            "",
+            "Prosimy o analizę tej wiadomości pod kątem zagrożeń bezpieczeństwa."
+          ].join("\\n");
+
+          const subjectEncoded = encodeURIComponent("SPAM: " + data.subject);
+          const bodyEncoded = encodeURIComponent(reportBody);
+          window.location.href = `mailto:tomaszciszewski01@gmail.com?subject=${subjectEncoded}&body=${bodyEncoded}`;
+          showMessage("Otworzono wiadomość z gotowym zgłoszeniem.");
+          loading.style.display = "none";
         });
       });
     });
-
-    function processBodyAndSendEmail(data, bodyContent, isHtml) {
-      let messageBody = bodyContent || "(pusta treść)";
-      let textOnlyBody = messageBody;
-
-      if (isHtml) {
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = messageBody;
-        textOnlyBody = tempDiv.textContent || tempDiv.innerText || messageBody;
-        textOnlyBody = "UWAGA: Oryginalna wiadomość zawierała HTML.\n\n" + textOnlyBody;
-      }
-
-      if (textOnlyBody.length > 3000) {
-        textOnlyBody = textOnlyBody.substring(0, 2997) + "...";
-      }
-
-      const body = [
-        "Zgłoszenie spamu - szczegóły wiadomości:",
-        "",
-        `Temat: ${data.subject}`,
-        `Nadawca: ${data.sender}`,
-        `Data otrzymania: ${data.receivedTime}`,
-        `ID wiadomości: ${data.messageId}`,
-        "",
-        "--- Treść tekstowa wiadomości ---",
-        textOnlyBody,
-        "",
-        "--- Koniec treści ---",
-        "",
-        "Prosimy o analizę tej wiadomości pod kątem zagrożeń bezpieczeństwa."
-      ].join("\\n");
-
-      const encodedSubject = encodeURIComponent("SPAM: " + data.subject);
-      const encodedBody = encodeURIComponent(body);
-      const mailto = `mailto:tomaszciszewski01@gmail.com?subject=${encodedSubject}&body=${encodedBody}`;
-      window.location.href = mailto;
-
-      if (isHtml) {
-        const blob = new Blob([bodyContent], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = "podejrzana-wiadomosc.html";
-        link.textContent = "Pobierz oryginalną treść HTML";
-        link.style.display = "block";
-        link.style.marginTop = "10px";
-        link.style.color = "#0078d4";
-        document.getElementById("resultMessage").appendChild(link);
-      }
-
-      document.getElementById("loadingIndicator").style.display = "none";
-    }
   </script>
 </body>
 </html>
