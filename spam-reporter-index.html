@@ -26,6 +26,11 @@
         .button:hover {
             background-color: #005a9e;
         }
+        .tooltip {
+            font-size: 14px;
+            color: #555;
+            margin-top: 8px;
+        }
         .message {
             margin-top: 20px;
             font-weight: bold;
@@ -34,34 +39,35 @@
 </head>
 <body>
     <h1>Zgłoś Spam</h1>
-    <p>Ta wtyczka pozwala zgłosić bieżącą wiadomość jako spam do działu bezpieczeństwa.</p>
+    <p>Ta wtyczka działa tylko w Outlook Mobile i umożliwia przekazanie wiadomości do działu bezpieczeństwa.</p>
     <button class="button" id="reportBtn">Zgłoś jako spam</button>
+    <div class="tooltip">Po kliknięciu wybierz „Przekaż dalej” i wpisz: <strong>tomaszciszewski01@gmail.com</strong></div>
     <div class="message" id="resultMessage"></div>
 
     <script>
         Office.onReady(() => {
-            document.getElementById("reportBtn").addEventListener("click", forwardMessage);
-        });
+            const platform = Office.context.mailbox.diagnostics?.hostName || "";
+            const isMobile = /ios|android/i.test(platform);
 
-        function forwardMessage() {
-            const mailbox = Office.context.mailbox;
-            const item = mailbox.item;
-
-            if (!item || !item.itemId || !mailbox.convertToEwsIdAsync || !mailbox.displayMessageForm) {
-                showMessage("Twoja wersja Outlooka nie obsługuje automatycznego przekazania wiadomości. Przekaż ją ręcznie na: tomaszciszewski01@gmail.com");
+            if (!isMobile) {
+                showMessage("Ta funkcja działa tylko w Outlook Mobile.");
                 return;
             }
 
-            mailbox.convertToEwsIdAsync(item.itemId, (result) => {
-                if (result.status === Office.AsyncResultStatus.Succeeded) {
-                    const ewsId = result.value;
-                    mailbox.displayMessageForm(ewsId);
-                    showMessage("Otworzono wiadomość do przekazania dalej. Wybierz odbiorcę: tomaszciszewski01@gmail.com");
-                } else {
-                    showMessage("Nie udało się przygotować wiadomości. Przekaż ją ręcznie na: tomaszciszewski01@gmail.com");
-                }
+            document.getElementById("reportBtn").addEventListener("click", () => {
+                const itemId = Office.context.mailbox.item.itemId;
+
+                Office.context.mailbox.convertToEwsIdAsync(itemId, (result) => {
+                    if (result.status === Office.AsyncResultStatus.Succeeded) {
+                        const ewsId = result.value;
+                        Office.context.mailbox.displayMessageForm(ewsId);
+                        showMessage("Otworzono wiadomość do przekazania. Wpisz odbiorcę: tomaszciszewski01@gmail.com i kliknij 'Wyślij'.");
+                    } else {
+                        showMessage("Nie udało się przygotować wiadomości. Przekaż ją ręcznie na: tomaszciszewski01@gmail.com");
+                    }
+                });
             });
-        }
+        });
 
         function showMessage(msg) {
             const div = document.getElementById("resultMessage");
