@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -6,6 +5,97 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Zgłoś Spam</title>
   <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background-color: #f4f6f8;
+      color: #333;
+    }
+    .container {
+      max-width: 560px;
+      margin: 0 auto;
+      background-color: #fff;
+      padding: 32px 24px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+      text-align: center;
+    }
+    .logo-container {
+      background-color: #1a1a1a;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+    .logo-container img {
+      max-width: 180px;
+      height: auto;
+    }
+    h1 {
+      font-size: 22px;
+      color: #2f4f6f;
+      margin-bottom: 12px;
+    }
+    p {
+      font-size: 15px;
+      margin-bottom: 24px;
+    }
+    .button {
+      background-color: #0078d4;
+      color: #fff;
+      border: none;
+      padding: 12px 28px;
+      font-size: 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    .button:hover {
+      background-color: #005a9e;
+    }
+    .button:active {
+      background-color: #004578;
+    }
+    .message {
+      margin-top: 24px;
+      font-weight: 500;
+      padding: 0 15px;
+      font-size: 14px;
+    }
+    .loading {
+      display: none;
+      margin-top: 20px;
+      font-style: italic;
+      color: #888;
+    }
+    .footer {
+      margin-top: 32px;
+      font-size: 13px;
+      color: #666;
+    }
+    .footer a {
+      color: #0078d4;
+      text-decoration: none;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
+    @media (max-width: 600px) {
+      body {
+        padding: 16px;
+      }
+      .container {
+        padding: 24px 16px;
+      }
+      h1 {
+        font-size: 20px;
+      }
+      p {
+        font-size: 14px;
+      }
+    }
+  </style>
 </head>
 <body>
   <div style="text-align: right; margin-bottom: 10px;">
@@ -27,6 +117,7 @@
       <p><a href="https://ratels.pl/polityka-prywatnosci/" target="_blank">Polityka prywatności</a></p>
     </div>
   </div>
+
   <script>
     function showMessage(msg) {
       const div = document.getElementById("resultMessage");
@@ -34,57 +125,6 @@
       div.style.color = msg.includes("błąd") ? "#d83b01" :
                         msg.includes("już wcześniej zgłoszona") ? "#f2c811" : "#107c10";
     }
-
-    Office.onReady(() => {
-      document.getElementById("reportBtn").addEventListener("click", () => {
-        const loadingIndicator = document.getElementById("loadingIndicator");
-        loadingIndicator.style.display = "block";
-
-        try {
-          const item = Office.context.mailbox.item;
-          if (!item) {
-            showMessage("Nie można pobrać szczegółów wiadomości.");
-            loadingIndicator.style.display = "none";
-            return;
-          }
-
-          const data = {
-            subject: item.subject || "(brak tematu)",
-            sender: item.from ? (item.from.emailAddress || item.from.displayName) : "(nieznany nadawca)",
-            receivedTime: item.dateTimeCreated ? new Date(item.dateTimeCreated).toLocaleString() : "(nieznany czas)",
-            messageId: item.internetMessageId || "(brak ID)"
-          };
-
-          const wasReportedBefore = saveReportedMessage(data.messageId);
-          if (wasReportedBefore) {
-            showMessage("Ta wiadomość została już wcześniej zgłoszona.");
-            loadingIndicator.style.display = "none";
-            return;
-          }
-
-          if (item.body) {
-            item.body.getAsync(Office.CoercionType.Html, function(resultHtml) {
-              if (resultHtml.status === Office.AsyncResultStatus.Succeeded && resultHtml.value) {
-                processBodyAndSendEmail(data, resultHtml.value, true);
-              } else {
-                item.body.getAsync(Office.CoercionType.Text, function(resultText) {
-                  if (resultText.status === Office.AsyncResultStatus.Succeeded) {
-                    processBodyAndSendEmail(data, resultText.value, false);
-                  } else {
-                    processBodyAndSendEmail(data, "(nie udało się pobrać treści wiadomości)", false);
-                  }
-                });
-              }
-            });
-          } else {
-            processBodyAndSendEmail(data, "(treść wiadomości niedostępna)", false);
-          }
-        } catch (error) {
-          showMessage("Wystąpił błąd: " + (error.message || "nieznany błąd"));
-          loadingIndicator.style.display = "none";
-        }
-      });
-    });
 
     function saveReportedMessage(messageId) {
       try {
@@ -100,6 +140,49 @@
       }
     }
 
+    Office.onReady(() => {
+      const btn = document.getElementById("reportBtn");
+      if (!btn) return;
+      btn.addEventListener("click", () => {
+        const loading = document.getElementById("loadingIndicator");
+        loading.style.display = "block";
+
+        const item = Office.context.mailbox.item;
+        if (!item) {
+          showMessage("Nie można pobrać szczegółów wiadomości.");
+          loading.style.display = "none";
+          return;
+        }
+
+        const data = {
+          subject: item.subject || "(brak tematu)",
+          sender: item.from ? (item.from.emailAddress || item.from.displayName) : "(nieznany nadawca)",
+          receivedTime: item.dateTimeCreated ? new Date(item.dateTimeCreated).toLocaleString() : "(nieznany czas)",
+          messageId: item.internetMessageId || "(brak ID)"
+        };
+
+        if (saveReportedMessage(data.messageId)) {
+          showMessage("Ta wiadomość została już wcześniej zgłoszona.");
+          loading.style.display = "none";
+          return;
+        }
+
+        item.body.getAsync(Office.CoercionType.Html, function(resultHtml) {
+          if (resultHtml.status === Office.AsyncResultStatus.Succeeded && resultHtml.value) {
+            processBodyAndSendEmail(data, resultHtml.value, true);
+          } else {
+            item.body.getAsync(Office.CoercionType.Text, function(resultText) {
+              if (resultText.status === Office.AsyncResultStatus.Succeeded) {
+                processBodyAndSendEmail(data, resultText.value, false);
+              } else {
+                processBodyAndSendEmail(data, "(nie udało się pobrać treści wiadomości)", false);
+              }
+            });
+          }
+        });
+      });
+    });
+
     function processBodyAndSendEmail(data, bodyContent, isHtml) {
       let messageBody = bodyContent || "(pusta treść)";
       let textOnlyBody = messageBody;
@@ -108,9 +191,7 @@
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = messageBody;
         textOnlyBody = tempDiv.textContent || tempDiv.innerText || messageBody;
-        textOnlyBody = "UWAGA: Oryginalna wiadomość zawierała HTML, który może ukrywać złośliwe linki.
-
-" + textOnlyBody;
+        textOnlyBody = "UWAGA: Oryginalna wiadomość zawierała HTML.\n\n" + textOnlyBody;
       }
 
       if (textOnlyBody.length > 3000) {
@@ -125,30 +206,30 @@
         `Data otrzymania: ${data.receivedTime}`,
         `ID wiadomości: ${data.messageId}`,
         "",
-        "--- Treść tekstowa podejrzanej wiadomości ---",
+        "--- Treść tekstowa wiadomości ---",
         textOnlyBody,
         "",
-        "--- Koniec treści podejrzanej wiadomości ---",
+        "--- Koniec treści ---",
         "",
         "Prosimy o analizę tej wiadomości pod kątem zagrożeń bezpieczeństwa."
-      ].join("\n");
+      ].join("\\n");
 
       const encodedSubject = encodeURIComponent("SPAM: " + data.subject);
       const encodedBody = encodeURIComponent(body);
-      const mailtoLink = `mailto:tomaszciszewski01@gmail.com?subject=${encodedSubject}&body=${encodedBody}`;
-      window.location.href = mailtoLink;
+      const mailto = `mailto:tomaszciszewski01@gmail.com?subject=${encodedSubject}&body=${encodedBody}`;
+      window.location.href = mailto;
 
       if (isHtml) {
         const blob = new Blob([bodyContent], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
-        const downloadLink = document.createElement('a');
-        downloadLink.href = url;
-        downloadLink.download = 'podejrzana-wiadomosc.html';
-        downloadLink.textContent = 'Pobierz oryginalną treść HTML';
-        downloadLink.style.display = 'block';
-        downloadLink.style.marginTop = '10px';
-        downloadLink.style.color = '#0078d4';
-        document.getElementById('resultMessage').appendChild(downloadLink);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = "podejrzana-wiadomosc.html";
+        link.textContent = "Pobierz oryginalną treść HTML";
+        link.style.display = "block";
+        link.style.marginTop = "10px";
+        link.style.color = "#0078d4";
+        document.getElementById("resultMessage").appendChild(link);
       }
 
       document.getElementById("loadingIndicator").style.display = "none";
