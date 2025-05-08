@@ -1,11 +1,12 @@
 <!DOCTYPE html>
+
 <html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Zgłoś Spam</title>
-  <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
-  <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Zgłoś Spam</title>
+<script src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js" type="text/javascript"></script>
+<style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       margin: 0;
@@ -98,23 +99,22 @@
   </style>
 </head>
 <body>
-  <div style="text-align: right; margin-bottom: 10px;">
-  <a href="spam-reporter-index.html"><img src="https://flagcdn.com/pl.svg" alt="PL" width="24" style="margin-right: 6px; vertical-align: middle;"></a>
-  <a href="spam-reporter-indexENG.html"><img src="https://flagcdn.com/gb.svg" alt="EN" width="24" style="vertical-align: middle;"></a>
-</div>
-    <a href="https://ratels.pl" target="_blank"><img src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg" alt="Logo Ratels"></a>
-    </div>
-    <h1>Zgłoszenie podejrzanej wiadomości</h1>
-    <p>Po kliknięciu przycisku zostanie przygotowana wiadomość z informacjami dla zespołu bezpieczeństwa.</p>
-    <button class="button" id="reportBtn">Zgłoś jako spam</button>
-    <div class="loading" id="loadingIndicator">Zbieranie danych...</div>
-    <div class="message" id="resultMessage"></div>
-    <div class="footer">
-      <p><a href="https://ratels.pl/polityka-prywatnosci/" target="_blank">Polityka prywatności</a></p>
-    </div>
-  </div>
+<div style="text-align: right; margin-bottom: 10px;">
+<a href="spam-reporter-index.html"><img alt="PL" src="https://flagcdn.com/pl.svg" style="margin-right: 6px; vertical-align: middle;" width="24"/></a>
+<a href="spam-reporter-indexENG.html"><img alt="EN" src="https://flagcdn.com/gb.svg" style="vertical-align: middle;" width="24"/></a>
+</div><div class="container"><div class="logo-container"><a href="https://ratels.pl" target="_blank"><img alt="Logo Ratels" src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg"/></a></div><h1>Zgłoszenie podejrzanej wiadomości</h1><p>Po kliknięciu przycisku zostanie przygotowana wiadomość z informacjami dla zespołu bezpieczeństwa.</p><button class="button" id="reportBtn">Zgłoś jako spam</button><div class="footer">
+<p><a href="https://ratels.pl/polityka-prywatnosci/" target="_blank">Polityka prywatności</a></p>
+</div></div>
 
-  <script>
+
+
+
+
+<div class="loading" id="loadingIndicator">Zbieranie danych...</div>
+<div class="message" id="resultMessage"></div>
+
+
+<script>
     function saveReportedMessage(messageId) {
       try {
         const reportedMessages = JSON.parse(localStorage.getItem('reportedSpamMessages') || '[]');
