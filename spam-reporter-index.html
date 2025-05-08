@@ -1,78 +1,51 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Zgłoś Spam</title>
-    <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 20px;
-            color: #333;
-            text-align: center;
-        }
-        .button {
-            background-color: #0078d4;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            font-size: 16px;
-            cursor: pointer;
-            border-radius: 5px;
-            margin-top: 20px;
-        }
-        .button:hover {
-            background-color: #005a9e;
-        }
-        .tooltip {
-            font-size: 14px;
-            color: #555;
-            margin-top: 8px;
-        }
-        .message {
-            margin-top: 20px;
-            font-weight: bold;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zgłoś Spam</title>
+  <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+      text-align: center;
+    }
+    .button {
+      background-color: #0078d4;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 5px;
+      margin-top: 20px;
+    }
+    .button:hover {
+      background-color: #005a9e;
+    }
+    .message {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
-    <h1>Zgłoś Spam</h1>
-    <p>Ta wtyczka działa tylko w Outlook Mobile i umożliwia przekazanie wiadomości do działu bezpieczeństwa.</p>
-    <button class="button" id="reportBtn">Zgłoś jako spam</button>
-    <div class="tooltip">Po kliknięciu wybierz „Przekaż dalej” i wpisz: <strong>tomaszciszewski01@gmail.com</strong></div>
-    <div class="message" id="resultMessage"></div>
+  <h1>Zgłoś Spam</h1>
+  <p>Ta wtyczka działa tylko w Outlook Mobile i umożliwia przekazanie wiadomości do działu bezpieczeństwa.</p>
+  <button class="button" id="reportBtn">Zgłoś jako spam</button>
+  <div class="message" id="resultMessage"></div>
 
-    <script>
-        Office.onReady(() => {
-            const platform = Office.context.mailbox.diagnostics?.hostName || "";
-            const isMobile = /ios|android/i.test(platform);
-
-            if (!isMobile) {
-                showMessage("Ta funkcja działa tylko w Outlook Mobile.");
-                return;
-            }
-
-            document.getElementById("reportBtn").addEventListener("click", () => {
-                const itemId = Office.context.mailbox.item.itemId;
-
-                Office.context.mailbox.convertToEwsIdAsync(itemId, (result) => {
-                    if (result.status === Office.AsyncResultStatus.Succeeded) {
-                        const ewsId = result.value;
-                        Office.context.mailbox.displayMessageForm(ewsId);
-                        showMessage("Otworzono wiadomość do przekazania. Wpisz odbiorcę: tomaszciszewski01@gmail.com i kliknij 'Wyślij'.");
-                    } else {
-                        showMessage("Nie udało się przygotować wiadomości. Przekaż ją ręcznie na: tomaszciszewski01@gmail.com");
-                    }
-                });
-            });
-        });
-
-        function showMessage(msg) {
-            const div = document.getElementById("resultMessage");
-            div.textContent = msg;
-        }
-    </script>
+  <script>
+    Office.onReady(() => {
+      document.getElementById("reportBtn").addEventListener("click", () => {
+        // Otwiera natywną aplikację poczty z predefiniowanym tematem i treścią
+        window.location.href = "mailto:tomaszciszewski01@gmail.com?subject=Spam zgłoszenie&body=Proszę sprawdzić załączoną wiadomość. Została oznaczona jako spam.";
+        document.getElementById("resultMessage").textContent = "Otworzono nową wiadomość. Wystarczy kliknąć 'Wyślij'.";
+      });
+    });
+  </script>
 </body>
 </html>
