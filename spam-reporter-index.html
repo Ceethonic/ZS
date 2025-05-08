@@ -2,98 +2,72 @@
 <html>
 <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Zgłoś Spam</title>
     <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0; padding: 20px; color: #333; text-align: center;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            text-align: center;
         }
         .button {
-            background-color: #0078d4; color: white; border: none;
-            padding: 10px 20px; font-size: 16px; cursor: pointer; border-radius: 4px;
+            background-color: #0078d4;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 20px;
         }
-        .button:hover { background-color: #005a9e; }
-        .error, .success { display: none; font-weight: bold; }
-        .error { color: red; }
-        .success { color: green; }
+        .button:hover {
+            background-color: #005a9e;
+        }
+        .message {
+            margin-top: 20px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
-    <div id="mainContent">
-        <h1>Zgłoś Spam</h1>
-        <p id="platformSpecificText">Ta wtyczka pozwala zgłosić bieżącą wiadomość jako spam do działu bezpieczeństwa.</p>
-        <p>Zgłoszenie zostanie przesłane wraz z kopią oryginalnej wiadomości.</p>
-        <button class="button" onclick="reportSpam()">Zgłoś jako spam</button>
-        <p class="success" id="successMessage"></p>
-        <p class="error" id="errorMessage"></p>
-    </div>
+    <h1>Zgłoś Spam</h1>
+    <p>Ta wtyczka pozwala zgłosić bieżącą wiadomość jako spam do działu bezpieczeństwa.</p>
+    <button class="button" id="reportBtn">Zgłoś jako spam</button>
+    <div class="message" id="resultMessage"></div>
 
     <script>
         Office.onReady(() => {
-            document.getElementById("mainContent").style.display = "block";
+            document.getElementById("reportBtn").addEventListener("click", reportSpam);
         });
 
         function reportSpam() {
-            const itemId = Office.context.mailbox.item.itemId;
-
-            // Sprawdź, czy wiadomość została już zgłoszona
-            if (localStorage.getItem(itemId)) {
-                showNotification("Ta wiadomość została już zgłoszona.");
-                moveToDeletedItems(itemId);
+            const mailbox = Office.context.mailbox;
+            if (!mailbox || !mailbox.displayNewMessageForm) {
+                showMessage("Twoja wersja Outlooka nie wspiera tej funkcji.");
                 return;
             }
 
-            Office.context.mailbox.item.getItemIdAsync((asyncResult) => {
-                const id = asyncResult.value;
-                const request = `
-                    <CreateItem MessageDisposition="SendAndSaveCopy">
-                        <SavedItemFolderId><DistinguishedFolderId Id="sentitems"/></SavedItemFolderId>
-                        <Items>
-                            <Message>
-                                <Subject>SPAM ALERT: ${Office.context.mailbox.item.subject}</Subject>
-                                <Body BodyType="HTML">
-                                    Użytkownik ${Office.context.mailbox.userProfile.emailAddress} oznaczył tę wiadomość jako spam. Prosimy o zablokowanie nadawcy.
-                                </Body>
-                                <ToRecipients>
-                                    <Mailbox><EmailAddress>tomaszciszewski01@gmail.com</EmailAddress></Mailbox>
-                                </ToRecipients>
-                                <Attachments>
-                                    <ItemAttachment><Name>original_spam_message.eml</Name><ItemId Id="${id}"/></ItemAttachment>
-                                </Attachments>
-                            </Message>
-                        </Items>
-                    </CreateItem>`;
+            const subject = "SPAM ALERT";
+            const body = `
+                Użytkownik ${mailbox.userProfile.emailAddress} oznaczył wiadomość jako spam.
+                Prosimy o sprawdzenie skrzynki oraz ręczne podjęcie działań blokujących nadawcę.
+            `;
 
-                Office.context.mailbox.makeEwsRequestAsync(request, (result) => {
-                    if (result.status === Office.AsyncResultStatus.Succeeded) {
-                        localStorage.setItem(itemId, true);
-                        showNotification("Wiadomość została zgłoszona jako spam.");
-                        moveToDeletedItems(itemId);
-                    } else {
-                        showNotification("Błąd: " + result.error.message, true);
-                    }
-                });
+            mailbox.displayNewMessageForm({
+                toRecipients: ["tomaszciszewski01@gmail.com"],
+                subject: subject,
+                htmlBody: body
             });
+
+            showMessage("Utworzono wiadomość do działu bezpieczeństwa.");
         }
 
-        function moveToDeletedItems(itemId) {
-            const request = `
-                <MoveItem>
-                    <ToFolderId><DistinguishedFolderId Id="deleteditems"/></ToFolderId>
-                    <ItemIds><ItemId Id="${itemId}"/></ItemIds>
-                </MoveItem>`;
-            Office.context.mailbox.makeEwsRequestAsync(request);
-        }
-
-        function showNotification(message, isError = false) {
-            const elemId = isError ? "errorMessage" : "successMessage";
-            const elem = document.getElementById(elemId);
-            elem.textContent = message;
-            elem.style.display = "block";
-            setTimeout(() => elem.style.display = "none", 3000);
+        function showMessage(msg) {
+            const div = document.getElementById("resultMessage");
+            div.textContent = msg;
         }
     </script>
 </body>
