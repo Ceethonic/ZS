@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Report Spam</title>
+  <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background-color: #f4f6f8;
+      color: #333;
+    }
+    .container {
+      max-width: 560px;
+      margin: 0 auto;
+      background-color: #fff;
+      padding: 32px 24px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+      text-align: center;
+    }
+    .logo-container {
+      background-color: #1a1a1a;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+    .logo-container img {
+      max-width: 180px;
+      height: auto;
+    }
+    h1 {
+      font-size: 22px;
+      color: #2f4f6f;
+      margin-bottom: 12px;
+    }
+    p {
+      font-size: 15px;
+      margin-bottom: 24px;
+    }
+    .button {
+      background-color: #0078d4;
+      color: #fff;
+      border: none;
+      padding: 12px 28px;
+      font-size: 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    .button:hover {
+      background-color: #005a9e;
+    }
+    .button:active {
+      background-color: #004578;
+    }
+    .message {
+      margin-top: 24px;
+      font-weight: 500;
+      padding: 0 15px;
+      font-size: 14px;
+    }
+    .loading {
+      display: none;
+      margin-top: 20px;
+      font-style: italic;
+      color: #888;
+    }
+    .footer {
+      margin-top: 32px;
+      font-size: 13px;
+      color: #666;
+    }
+    .footer a {
+      color: #0078d4;
+      text-decoration: none;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
+    @media (max-width: 600px) {
+      body {
+        padding: 16px;
+      }
+      .container {
+        padding: 24px 16px;
+      }
+      h1 {
+        font-size: 20px;
+      }
+      p {
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div style="text-align: right; margin-bottom: 10px;">
+    <a href="spam-reporter-index.html"><img src="https://flagcdn.com/pl.svg" alt="PL" width="24" style="margin-right: 6px; vertical-align: middle;"></a>
+    <a href="spam-reporter-indexENG.html"><img src="https://flagcdn.com/gb.svg" alt="EN" width="24" style="vertical-align: middle;"></a>
+  </div>
+  <div class="container">
+    <div class="logo-container">
+      <a href="https://ratels.pl" target="_blank">
+        <img src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg" alt="Ratels Logo">
+      </a>
+    </div>
+    <h1>Suspicious Message Reporting</h1>
+    <p>Click the button below to prepare an email with message details for the security team.</p>
+    <button class="button" id="reportBtn">Report as Spam</button>
+    <div class="loading" id="loadingIndicator">Collecting data...</div>
+    <div class="message" id="resultMessage"></div>
+    <div class="footer">
+      <p><a href="https://ratels.pl/polityka-prywatnosci/" target="_blank">Privacy Policy</a></p>
+    </div>
+  </div>
+
+  <script>
+    function saveReportedMessage(messageId) {
+      try {
+        const reportedMessages = JSON.parse(localStorage.getItem('reportedSpamMessages') || '[]');
+        if (!reportedMessages.includes(messageId)) {
+          reportedMessages.push(messageId);
+          localStorage.setItem('reportedSpamMessages', JSON.stringify(reportedMessages));
+          return false;
+        }
+        return true;
+      } catch (e) {
+        console.error("Error saving report history:", e);
+        return false;
+      }
+    }
+
+    function showMessage(text, type = 'info') {
+      const div = document.getElementById("resultMessage");
+      div.textContent = text;
+      div.style.color = type === 'error' ? '#d83b01' : (type === 'warning' ? '#f2c811' : '#107c10');
+    }
+
+    Office.onReady(() => {
+      document.getElementById("reportBtn").addEventListener("click", () => {
+        const loading = document.getElementById("loadingIndicator");
+        loading.style.display = "block";
+
+        const item = Office.context.mailbox.item;
+        if (!item) {
+          showMessage("Unable to retrieve message details.", "error");
+          loading.style.display = "none";
+          return;
+        }
+
+        const data = {
+          subject: item.subject || "(no subject)",
+          sender: item.from ? (item.from.emailAddress || item.from.displayName) : "(unknown sender)",
+          receivedTime: item.dateTimeCreated ? new Date(item.dateTimeCreated).toLocaleString() : "(unknown time)",
+          messageId: item.internetMessageId || "(no ID)"
+        };
+
+        if (saveReportedMessage(data.messageId)) {
+          showMessage("This message has already been reported.", "warning");
+          loading.style.display = "none";
+          return;
+        }
+
+        if (item.body) {
+          item.body.getAsync(Office.CoercionType.Html, function(resHtml) {
+            if (resHtml.status === Office.AsyncResultStatus.Succeeded && resHtml.value) {
+              handleBody(resHtml.value, true);
+            } else {
+              item.body.getAsync(Office.CoercionType.Text, function(resText) {
+                if (resText.status === Office.AsyncResultStatus.Succeeded) {
+                  handleBody(resText.value, false);
+                } else {
+                  handleBody("(unable to retrieve message content)", false);
+                }
+              });
+            }
+          });
+        } else {
+          handleBody("(message content unavailable)", false);
+        }
+
+        function handleBody(content, isHtml) {
+          let cleaned = content || "(empty content)";
+          if (isHtml) {
+            const temp = document.createElement("div");
+            temp.innerHTML = cleaned;
+            cleaned = temp.textContent || temp.innerText || cleaned;
+          }
+          if (cleaned.length > 3000) {
+            cleaned = cleaned.substring(0, 2997) + "...";
+          }
+
+          const reportBody = [
+            "Spam Report - Message Details:",
+            "",
+            `Subject: ${data.subject}`,
+            `Sender: ${data.sender}`,
+            `Received: ${data.receivedTime}`,
+            `Message-ID: ${data.messageId}`,
+            "",
+            "--- Message Content ---",
+            cleaned,
+            "--- End of Content ---",
+            "",
+            "Please review this message for potential security threats."
+          ].join("\n");
+
+          const subjectEncoded = encodeURIComponent("SPAM: " + data.subject);
+          const bodyEncoded = encodeURIComponent(reportBody);
+          const mailto = `mailto:tomaszciszewski01@gmail.com?subject=${subjectEncoded}&body=${bodyEncoded}`;
+
+          if (mailto.length > 2000) {
+            const shortBody = [
+              `Subject: ${data.subject}`,
+              `Sender: ${data.sender}`,
+              `Received: ${data.receivedTime}`,
+              `Message-ID: ${data.messageId}`,
+              "",
+              "Message content was too long to include.",
+              "",
+              "Please review this message."
+            ].join("\n");
+            window.location.href = `mailto:tomaszciszewski01@gmail.com?subject=${subjectEncoded}&body=${encodeURIComponent(shortBody)}`;
+          } else {
+            window.location.href = mailto;
+          }
+
+          showMessage("The message has been forwarded to the security team.");
+          loading.style.display = "none";
+        }
+      });
+    });
+  </script>
+</body>
+</html>
