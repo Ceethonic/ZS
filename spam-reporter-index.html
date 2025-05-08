@@ -5,181 +5,228 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Zgłoś Spam</title>
   <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       margin: 0;
       padding: 24px;
-      background-color: #f5f7fa;
+      background-color: #f4f6f8;
       color: #333;
     }
     .container {
-      max-width: 540px;
+      max-width: 560px;
       margin: 0 auto;
       background-color: #fff;
-      padding: 32px;
+      padding: 32px 24px;
       border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
       text-align: center;
     }
-    .icon {
-      width: 48px;
-      height: 48px;
-      margin-bottom: 16px;
-      color: #d97706;
+    .logo-container {
+      background-color: #1a1a1a;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+    .logo-container img {
+      max-width: 180px;
+      height: auto;
     }
     h1 {
       font-size: 22px;
-      margin-bottom: 12px;
       color: #2f4f6f;
+      margin-bottom: 12px;
     }
     p {
       font-size: 15px;
-      margin-bottom: 20px;
+      margin-bottom: 24px;
     }
     .button {
-      background-color: #005a9e;
-      color: white;
+      background-color: #0078d4;
+      color: #fff;
       border: none;
       padding: 12px 28px;
       font-size: 15px;
-      font-weight: 500;
+      border-radius: 5px;
       cursor: pointer;
-      border-radius: 4px;
       transition: background-color 0.2s ease;
     }
     .button:hover {
-      background-color: #004885;
+      background-color: #005a9e;
+    }
+    .button:active {
+      background-color: #004578;
     }
     .message {
       margin-top: 24px;
-      font-size: 14px;
       font-weight: 500;
+      padding: 0 15px;
+      font-size: 14px;
     }
-    .info { color: #107c10; }
-    .warning { color: #f2c811; }
-    .error { color: #d83b01; }
+    .loading {
+      display: none;
+      margin-top: 20px;
+      font-style: italic;
+      color: #888;
+    }
+    .footer {
+      margin-top: 32px;
+      font-size: 13px;
+      color: #666;
+    }
+    .footer a {
+      color: #0078d4;
+      text-decoration: none;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
+    @media (max-width: 600px) {
+      body {
+        padding: 16px;
+      }
+      .container {
+        padding: 24px 16px;
+      }
+      h1 {
+        font-size: 20px;
+      }
+      p {
+        font-size: 14px;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div id="iconPlaceholder" class="icon"></div>
+  <div style="text-align: right; margin-bottom: 10px;">
+  <a href="spam-reporter-index.html"><img src="https://flagcdn.com/pl.svg" alt="PL" width="24" style="margin-right: 6px; vertical-align: middle;"></a>
+  <a href="spam-reporter-indexENG.html"><img src="https://flagcdn.com/gb.svg" alt="EN" width="24" style="vertical-align: middle;"></a>
+</div>
+    <a href="https://ratels.pl" target="_blank"><img src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg" alt="Logo Ratels"></a>
+    </div>
     <h1>Zgłoszenie podejrzanej wiadomości</h1>
-    <p>Po kliknięciu przycisku zostanie przygotowana wiadomość e-mail do zespołu bezpieczeństwa.</p>
+    <p>Po kliknięciu przycisku zostanie przygotowana wiadomość z informacjami dla zespołu bezpieczeństwa.</p>
     <button class="button" id="reportBtn">Zgłoś jako spam</button>
+    <div class="loading" id="loadingIndicator">Zbieranie danych...</div>
     <div class="message" id="resultMessage"></div>
+    <div class="footer">
+      <p><a href="https://ratels.pl/polityka-prywatnosci/" target="_blank">Polityka prywatności</a></p>
+    </div>
   </div>
 
   <script>
-    // Ikona
-    lucide.createIcons();
-    document.getElementById("iconPlaceholder").innerHTML = lucide.icons["mail-warning"].toSvg();
+    function saveReportedMessage(messageId) {
+      try {
+        const reportedMessages = JSON.parse(localStorage.getItem('reportedSpamMessages') || '[]');
+        if (!reportedMessages.includes(messageId)) {
+          reportedMessages.push(messageId);
+          localStorage.setItem('reportedSpamMessages', JSON.stringify(reportedMessages));
+          return false;
+        }
+        return true;
+      } catch (e) {
+        console.error("Błąd historii zgłoszeń:", e);
+        return false;
+      }
+    }
 
-    function showMessage(msg, type = "info") {
+    function showMessage(text, type = 'info') {
       const div = document.getElementById("resultMessage");
-      div.textContent = msg;
-      div.className = `message ${type}`;
+      div.textContent = text;
+      div.style.color = type === 'error' ? '#d83b01' : (type === 'warning' ? '#f2c811' : '#107c10');
     }
 
     Office.onReady(() => {
       document.getElementById("reportBtn").addEventListener("click", () => {
+        const loading = document.getElementById("loadingIndicator");
+        loading.style.display = "block";
+
         const item = Office.context.mailbox.item;
-
-        if (!item || !item.subject || !item.from || !item.itemId) {
+        if (!item) {
           showMessage("Nie można pobrać szczegółów wiadomości.", "error");
-          return;
-        }
-
-        const itemId = item.itemId;
-        const localKey = "reported_" + itemId;
-
-        if (localStorage.getItem(localKey)) {
-          showMessage("Ta wiadomość została już wcześniej zgłoszona jako spam.", "warning");
+          loading.style.display = "none";
           return;
         }
 
         const data = {
           subject: item.subject || "(brak tematu)",
-          sender: item.from.emailAddress || item.from.displayName || "(nieznany nadawca)",
+          sender: item.from ? (item.from.emailAddress || item.from.displayName) : "(nieznany nadawca)",
           receivedTime: item.dateTimeCreated ? new Date(item.dateTimeCreated).toLocaleString() : "(nieznany czas)",
           messageId: item.internetMessageId || "(brak ID)"
         };
 
-        // Pobieramy treść wiadomości
+        if (saveReportedMessage(data.messageId)) {
+          showMessage("Ta wiadomość została już wcześniej zgłoszona.", "warning");
+          loading.style.display = "none";
+          return;
+        }
+
         if (item.body) {
-          item.body.getAsync(Office.CoercionType.Html, (resHtml) => {
+          item.body.getAsync(Office.CoercionType.Html, function(resHtml) {
             if (resHtml.status === Office.AsyncResultStatus.Succeeded && resHtml.value) {
-              processBody(resHtml.value, true, data);
+              handleBody(resHtml.value, true);
             } else {
-              item.body.getAsync(Office.CoercionType.Text, (resText) => {
+              item.body.getAsync(Office.CoercionType.Text, function(resText) {
                 if (resText.status === Office.AsyncResultStatus.Succeeded) {
-                  processBody(resText.value, false, data);
+                  handleBody(resText.value, false);
                 } else {
-                  processBody("(nie udało się pobrać treści wiadomości)", false, data);
+                  handleBody("(nie udało się pobrać treści wiadomości)", false);
                 }
               });
             }
           });
         } else {
-          processBody("(treść wiadomości niedostępna)", false, data);
+          handleBody("(treść niedostępna)", false);
         }
 
-        function processBody(content, isHtml, meta) {
-          let messageBody = content || "(pusta treść)";
+        function handleBody(content, isHtml) {
+          let cleaned = content || "(pusta treść)";
           if (isHtml) {
-            try {
-              const tempDiv = document.createElement('div');
-              tempDiv.innerHTML = messageBody;
-              messageBody = tempDiv.textContent || tempDiv.innerText || messageBody;
-            } catch (e) {
-              console.warn("Nie udało się oczyścić HTML:", e);
-            }
+            const temp = document.createElement("div");
+            temp.innerHTML = cleaned;
+            cleaned = temp.textContent || temp.innerText || cleaned;
+          }
+          if (cleaned.length > 3000) {
+            cleaned = cleaned.substring(0, 2997) + "...";
           }
 
-          if (messageBody.length > 3000) {
-            messageBody = messageBody.substring(0, 2997) + "...";
-          }
-
-          const reportText = [
-            "Zgłoszenie spamu — szczegóły wiadomości:",
+          const reportBody = [
+            "Zgłoszenie spamu - szczegóły wiadomości:",
             "",
-            `Temat: ${meta.subject}`,
-            `Nadawca: ${meta.sender}`,
-            `Data otrzymania: ${meta.receivedTime}`,
-            `Message-ID: ${meta.messageId}`,
+            `Temat: ${data.subject}`,
+            `Nadawca: ${data.sender}`,
+            `Data otrzymania: ${data.receivedTime}`,
+            `ID wiadomości: ${data.messageId}`,
             "",
             "--- Treść wiadomości ---",
-            messageBody,
+            cleaned,
             "--- Koniec treści ---",
             "",
             "Prosimy o analizę tej wiadomości pod kątem zagrożeń bezpieczeństwa."
           ].join("\n");
 
-          const encodedSubject = encodeURIComponent("SPAM: " + meta.subject);
-          const encodedBody = encodeURIComponent(reportText);
-          const mailtoLink = `mailto:tomaszciszewski01@gmail.com?subject=${encodedSubject}&body=${encodedBody}`;
+          const subjectEncoded = encodeURIComponent("SPAM: " + data.subject);
+          const bodyEncoded = encodeURIComponent(reportBody);
+          const mailto = `mailto:tomaszciszewski01@gmail.com?subject=${subjectEncoded}&body=${bodyEncoded}`;
 
-          // fallback jeśli link za długi
-          if (mailtoLink.length > 2000) {
-            const shorterBody = encodeURIComponent([
-              `Temat: ${meta.subject}`,
-              `Nadawca: ${meta.sender}`,
-              `Data otrzymania: ${meta.receivedTime}`,
-              `Message-ID: ${meta.messageId}`,
+          if (mailto.length > 2000) {
+            const shortBody = [
+              `Temat: ${data.subject}`,
+              `Nadawca: ${data.sender}`,
+              `Data otrzymania: ${data.receivedTime}`,
+              `ID wiadomości: ${data.messageId}`,
               "",
-              "Treść była zbyt długa, aby ją dołączyć automatycznie.",
+              "Treść była zbyt długa, aby ją dołączyć.",
               "",
-              "Prosimy o analizę tej wiadomości pod kątem zagrożeń bezpieczeństwa."
-            ].join("\n"));
-
-            window.location.href = `mailto:tomaszciszewski01@gmail.com?subject=${encodedSubject}&body=${shorterBody}`;
+              "Prosimy o analizę tej wiadomości."
+            ].join("\n");
+            window.location.href = `mailto:tomaszciszewski01@gmail.com?subject=${subjectEncoded}&body=${encodeURIComponent(shortBody)}`;
           } else {
-            window.location.href = mailtoLink;
+            window.location.href = mailto;
           }
 
-          localStorage.setItem(localKey, "1");
-          showMessage("Wiadomość została przekazana do zespołu bezpieczeństwa.", "info");
+          showMessage("Wiadomość została przekazana do zespołu bezpieczeństwa.");
+          loading.style.display = "none";
         }
       });
     });
