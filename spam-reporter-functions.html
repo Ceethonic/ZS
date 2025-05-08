@@ -11,77 +11,67 @@
     <script type="text/javascript">
         // Inicjalizacja Office JS
         Office.onReady(function(info) {
-            // Weryfikacja czy działa na urządzeniu mobilnym
-            if (Office.context.platform !== Office.PlatformType.PC) {
-                // Na urządzeniach mobilnych - wszystko ok
-            } else {
-                // Na komputerze - wyłączamy funkcjonalność
-                console.log("Ta wtyczka jest przeznaczona tylko dla urządzeń mobilnych.");
+            // Sprawdź parametry URL
+            var urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('action') === 'reportSpam') {
+                // Jeśli przyszliśmy z indeksu, wywołaj funkcję raportowania
+                reportSpam();
             }
         });
         
         // Główna funkcja zgłaszania spamu
         function reportSpam() {
-            // Sprawdzenie platformy - działa tylko na telefonach
-            if (Office.context.platform === Office.PlatformType.PC) {
-                // Jeśli na desktopie, wyświetl komunikat
-                showNotification("Ta funkcja jest dostępna tylko na urządzeniach mobilnych.");
-                return;
+            try {
+                // Przygotowanie treści zgłoszenia
+                var subject = "SPAM ALERT: " + Office.context.mailbox.item.subject;
+                var body = "Użytkownik " + Office.context.mailbox.userProfile.emailAddress + 
+                          " oznaczył tę wiadomość jako spam. Prosimy o zablokowanie nadawcy w systemie bezpieczeństwa poczty.";
+                
+                // Załącznik to oryginalna wiadomość
+                var attachments = [{
+                    type: "item",
+                    itemId: Office.context.mailbox.item.itemId,
+                    name: "original_spam_message.eml"
+                }];
+                
+                // Przesłanie wiadomości do działu bezpieczeństwa
+                Office.context.mailbox.displayNewMessageForm({
+                    toRecipients: ["tomaszciszewski01@gmail.com"],
+                    subject: subject,
+                    htmlBody: body,
+                    attachments: attachments
+                });
+                
+                // Powiadomienie użytkownika
+                showNotification("Wiadomość została zgłoszona jako spam");
+                
+                // Wyświetl potwierdzenie na stronie
+                document.getElementById("confirmation").style.display = "block";
+            } catch (error) {
+                console.error("Błąd zgłaszania spamu:", error);
+                document.getElementById("error").textContent = "Wystąpił błąd: " + error.message;
+                document.getElementById("error").style.display = "block";
             }
-            
-            // Pobierz aktualną wiadomość
-            Office.context.mailbox.item.getAsync(
-                {
-                    asyncContext: "reportSpam"
-                },
-                function(asyncResult) {
-                    if (asyncResult.status === Office.AsyncResultStatus.Failed) {
-                        showNotification("Nie udało się pobrać wiadomości: " + asyncResult.error.message);
-                        return;
-                    }
-                    
-                    // Pobierz wiadomość jako EML
-                    var mailItem = asyncResult.value;
-                    
-                    // Przygotowanie treści zgłoszenia
-                    var subject = "SPAM ALERT: " + Office.context.mailbox.item.subject;
-                    var body = "Użytkownik " + Office.context.mailbox.userProfile.emailAddress + 
-                              " oznaczył tę wiadomość jako spam. Prosimy o zablokowanie nadawcy w systemie bezpieczeństwa poczty.";
-                    
-                    // Załącznik to oryginalna wiadomość
-                    var attachments = [{
-                        type: "item",
-                        itemId: Office.context.mailbox.item.itemId,
-                        name: "original_spam_message.eml"
-                    }];
-                    
-                    // Przesłanie wiadomości do działu bezpieczeństwa
-                    Office.context.mailbox.displayNewMessageForm({
-                        toRecipients: ["tomaszciszewski01@gmail.com"],
-                        subject: subject,
-                        htmlBody: body,
-                        attachments: attachments
-                    });
-                    
-                    // Powiadomienie użytkownika
-                    showNotification("Wiadomość została zgłoszona jako spam");
-                }
-            );
         }
         
         // Pomocnicza funkcja do wyświetlania powiadomień
         function showNotification(message) {
-            // W środowisku mobilnym użyj natywnego powiadomienia
-            if (Office.context.mailbox.diagnostics.hostName === "Outlook_iOS" || 
-                Office.context.mailbox.diagnostics.hostName === "Outlook_Android") {
-                Office.context.mailbox.item.notificationMessages.addAsync("spamReportNotification", {
-                    type: "informationalMessage",
-                    message: message,
-                    icon: "icon-16",
-                    persistent: false
-                });
-            } else {
-                // Dla innych środowisk użyj alertu
+            try {
+                // Próba użycia natywnych powiadomień Outlook
+                if (Office.context.mailbox && Office.context.mailbox.item && 
+                    Office.context.mailbox.item.notificationMessages) {
+                    Office.context.mailbox.item.notificationMessages.addAsync("spamReportNotification", {
+                        type: "informationalMessage",
+                        message: message,
+                        icon: "icon-16",
+                        persistent: false
+                    });
+                } else {
+                    // Alternatywnie wyświetl alert
+                    alert(message);
+                }
+            } catch (error) {
+                // W przypadku błędu, wyświetl alert
                 alert(message);
             }
         }
@@ -89,8 +79,39 @@
         // Eksportowanie funkcji dla Office JS
         Office.actions.associate("reportSpam", reportSpam);
     </script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            text-align: center;
+        }
+        h1 {
+            font-size: 24px;
+        }
+        .message {
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .confirmation {
+            background-color: #e6f7e6;
+            color: #2e7d32;
+            display: none;
+        }
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+            display: none;
+        }
+    </style>
 </head>
 <body>
-    <!-- Pusta strona HTML - kod jest wykonywany w tle -->
+    <h1>Zgłaszanie Spamu</h1>
+    <div id="confirmation" class="message confirmation">
+        Wiadomość została zgłoszona jako spam. Dziękujemy za pomoc w utrzymaniu bezpieczeństwa!
+    </div>
+    <div id="error" class="message error"></div>
 </body>
 </html>
