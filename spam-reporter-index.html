@@ -34,7 +34,7 @@
 </head>
 <body>
   <h1>Zgłoś Spam</h1>
-  <p>Po kliknięciu zostanie przygotowana wiadomość z tematem i nadawcą do działu bezpieczeństwa.</p>
+  <p>Po kliknięciu zostanie przygotowana wiadomość z tematem, nadawcą i identyfikatorem wiadomości.</p>
   <button class="button" id="reportBtn">Zgłoś jako spam</button>
   <div class="message" id="resultMessage"></div>
 
@@ -49,12 +49,20 @@
         }
 
         const subject = encodeURIComponent("SPAM: " + item.subject);
+        const from = item.from.emailAddress || item.from.displayName;
+        const messageId = item.internetMessageId || "(brak)";
+
         const body = encodeURIComponent(
-          `Zgłoszenie spamu\n\nTemat wiadomości: ${item.subject}\nNadawca: ${item.from.emailAddress || item.from.displayName}\n\nProszę o analizę tej wiadomości.`
+          `Zgłoszenie spamu\n\n` +
+          `Temat wiadomości: ${item.subject}\n` +
+          `Nadawca: ${from}\n` +
+          `Message-ID: ${messageId}\n\n` +
+          `Proszę o analizę tej wiadomości.`
         );
 
         const mailtoLink = `mailto:tomaszciszewski01@gmail.com?subject=${subject}&body=${body}`;
         window.location.href = mailtoLink;
+
         showMessage("Otworzono nową wiadomość do działu bezpieczeństwa.");
       });
     });
