@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <title>Zgłoś Spam - Funkcje</title>
+    
+    <!-- Office JS API -->
+    <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
+    
+    <script type="text/javascript">
+        // Inicjalizacja Office JS
+        Office.onReady(function(info) {
+            // Sprawdź parametry URL
+            var urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('action') === 'reportSpam') {
+                // Jeśli przyszliśmy z indeksu, wywołaj funkcję sprawdzającą
+                checkIfAlreadyReported();
+            }
+        });
+        
+        // Funkcja sprawdzająca czy wiadomość została już zgłoszona
+        function checkIfAlreadyReported() {
+            try {
+                var messageId = Office.context.mailbox.item.internetMessageId;
+                var userEmail = Office.context.mailbox.userProfile.emailAddress;
+                
+                // Klucz do localStorage będzie kombinacją ID wiadomości i adresu email użytkownika
+                var storageKey = "spam_reported_" + messageId + "_" + userEmail;
+                
+                // Sprawdzamy czy wiadomość została już zgłoszona
+                var alreadyReported = localStorage.getItem(storageKey);
+                
+                if (alreadyReported) {
+                    showNotification("Ta wiadomość została już wcześniej zgłoszona jako spam.");
+                    document.getElementById("alreadyReported").style.display = "block";
+                } else {
+                    // Jeśli nie została zgłoszona, raportujemy i zapisujemy informację
+                    reportSpam();
+                    localStorage.setItem(storageKey, new Date().toISOString());
+                }
+            } catch (error) {
+                // Jeśli wystąpi błąd przy sprawdzaniu, kontynuujemy zgłaszanie
+                reportSpam();
+            }
+        }
+        
+        // Główna funkcja zgłaszania spamu
+        function reportSpam() {
+            try {
+                // Przygotowanie treści zgłoszenia
+                var subject = "SPAM ALERT: " + Office.context.mailbox.item.subject;
+                var body = "Użytkownik " + Office.context.mailbox.userProfile.emailAddress + 
+                          " oznaczył tę wiadomość jako spam. Prosimy o zablokowanie nadawcy w systemie bezpieczeństwa poczty.";
+                
+                // Załącznik to oryginalna wiadomość
+                var attachments = [{
+                    type: "item",
+                    itemId: Office.context.mailbox.item.itemId,
+                    name: "original_spam_message.eml"
+                }];
+                
+                // Przesłanie wiadomości do działu bezpieczeństwa automatycznie
+                Office.context.mailbox.item.getAttachmentsAsync(function(result) {
+                    if (result.status === Office.AsyncResultStatus.Succeeded) {
+                        // Tworzenie obiektu wiadomości e-mail
+                        var emailDetails = {
+                            toRecipients: ["tomaszciszewski01@gmail.com"],
+                            subject: subject,
+                            htmlBody: body,
+                            attachments: attachments
+                        };
+                        
+                        // Wysyłanie wiadomości automatycznie
+                        Office.context.mailbox.makeEwsRequestAsync(
+                            getEwsSendMessageXml(emailDetails),
+                            function(asyncResult) {
+                                if (asyncResult.status === Office.AsyncResultStatus.Succeeded) {
+                                    // Pomyślnie wysłano wiadomość
+                                    showNotification("Wiadomość została zgłoszona jako spam");
+                                    document.getElementById("confirmation").style.display = "block";
+                                    
+                                    // Przenieś wiadomość do kosza
+                                    moveToTrash();
+                                } else {
+                                    // Wystąpił błąd, spróbuj alternatywnej metody wysyłania
+                                    fallbackSendMethod(emailDetails);
+                                }
+                            }
+                        );
+                    } else {
+                        // Błąd przy pobieraniu załączników, spróbuj alternatywnej metody
+                        fallbackSendMethod({
+                            toRecipients: ["tomaszciszewski01@gmail.com"],
+                            subject: subject,
+                            htmlBody: body
+                        });
+                    }
+                });
+            } catch (error) {
+                console.error("Błąd zgłaszania spamu:", error);
+                document.getElementById("error").textContent = "Wystąpił błąd: " + error.message;
+                document.getElementById("error").style.display = "block";
+            }
+        }
+        
+        // Funkcja alternatywna dla wysyłania wiadomości
+        function fallbackSendMethod(emailDetails) {
+            try {
+                // Użyj displayNewMessageForm jako alternatywnej metody
+                Office.context.mailbox.displayNewMessageForm(emailDetails);
+                
+                // Wyświetl informację, że użytkownik musi ręcznie zatwierdzić
+                document.getElementById("manualConfirmation").style.display = "block";
+                
+                // Nadal możemy przenieść wiadomość do kosza
+                moveToTrash();
+            } catch (error) {
+                document.getElementById("error").textContent = "Nie udało się automatycznie wysłać zgłoszenia: " + error.message;
+                document.getElementById("error").style.display = "block";
+            }
+        }
+        
+        // Funkcja tworząca żądanie SOAP dla EWS w celu wysłania wiadomości
+        function getEwsSendMessageXml(emailDetails) {
+            var recipients = '';
+            emailDetails.toRecipients.forEach(function(recipient) {
+                recipients += '<t:Mailbox><t:EmailAddress>' + recipient + '</t:EmailAddress></t:Mailbox>';
+            });
+            
+            var xml = '<?xml version="1.0" encoding="utf-8"?>' +
+                '<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ' +
+                'xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages" ' +
+                'xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types" ' +
+                'xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">' +
+                '  <soap:Header>' +
+                '    <t:RequestServerVersion Version="Exchange2013" />' +
+                '  </soap:Header>' +
+                '  <soap:Body>' +
+                '    <m:CreateItem MessageDisposition="SendAndSaveCopy">' +
+                '      <m:Items>' +
+                '        <t:Message>' +
+                '          <t:Subject>' + emailDetails.subject + '</t:Subject>' +
+                '          <t:Body BodyType="HTML">' + emailDetails.htmlBody + '</t:Body>' +
+                '          <t:ToRecipients>' + recipients + '</t:ToRecipients>' +
+                '        </t:Message>' +
+                '      </m:Items>' +
+                '    </m:CreateItem>' +
+                '  </soap:Body>' +
+                '</soap:Envelope>';
+                
+            return xml;
+        }
+        
+        // Funkcja przenosząca wiadomość do kosza
+        function moveToTrash() {
+            try {
+                // Używamy EWS do przeniesienia wiadomości do kosza
+                Office.context.mailbox.makeEwsRequestAsync(
+                    getEwsMoveToTrashXml(Office.context.mailbox.item.itemId),
+                    function(asyncResult) {
+                        if (asyncResult.status !== Office.AsyncResultStatus.Succeeded) {
+                            console.error("Nie udało się przenieść wiadomości do kosza");
+                        }
+                    }
+                );
+            } catch (error) {
+                console.error("Błąd podczas przenoszenia do kosza:", error);
+            }
+        }
+        
+        // Funkcja tworząca żądanie SOAP dla EWS w celu przeniesienia wiadomości do kosza
+        function getEwsMoveToTrashXml(itemId) {
+            var xml = '<?xml version="1.0" encoding="utf-8"?>' +
+                '<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ' +
+                'xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages" ' +
+                'xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types" ' +
+                'xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">' +
+                '  <soap:Header>' +
+                '    <t:RequestServerVersion Version="Exchange2013" />' +
+                '  </soap:Header>' +
+                '  <soap:Body>' +
+                '    <m:MoveItem>' +
+                '      <m:ToFolderId>' +
+                '        <t:DistinguishedFolderId Id="deleteditems"/>' +
+                '      </m:ToFolderId>' +
+                '      <m:ItemIds>' +
+                '        <t:ItemId Id="' + itemId + '"/>' +
+                '      </m:ItemIds>' +
+                '    </m:MoveItem>' +
+                '  </soap:Body>' +
+                '</soap:Envelope>';
+                
+            return xml;
+        }
+        
+        // Pomocnicza funkcja do wyświetlania powiadomień
+        function showNotification(message) {
+            try {
+                // Próba użycia natywnych powiadomień Outlook
+                if (Office.context.mailbox && Office.context.mailbox.item && 
+                    Office.context.mailbox.item.notificationMessages) {
+                    Office.context.mailbox.item.notificationMessages.addAsync("spamReportNotification", {
+                        type: "informationalMessage",
+                        message: message,
+                        icon: "icon-16",
+                        persistent: false
+                    });
+                } else {
+                    // Alternatywnie wyświetl alert
+                    alert(message);
+                }
+            } catch (error) {
+                // W przypadku błędu, wyświetl alert
+                alert(message);
+            }
+        }
+        
+        // Eksportowanie funkcji dla Office JS
+        Office.actions.associate("reportSpam", reportSpam);
+        Office.actions.associate("checkIfAlreadyReported", checkIfAlreadyReported);
+    </script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            text-align: center;
+        }
+        h1 {
+            font-size: 24px;
+        }
+        .message {
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .confirmation {
+            background-color: #e6f7e6;
+            color: #2e7d32;
+            display: none;
+        }
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+            display: none;
+        }
+        .warning {
+            background-color: #fff9c4;
+            color: #ff6f00;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Zgłaszanie Spamu</h1>
+    <div id="confirmation" class="message confirmation">
+        Wiadomość została zgłoszona jako spam. Dziękujemy za pomoc w utrzymaniu bezpieczeństwa!
+    </div>
+    <div id="manualConfirmation" class="message warning">
+        Proszę kliknąć 'Wyślij' aby zakończyć zgłaszanie spamu.
+    </div>
+    <div id="alreadyReported" class="message warning">
+        Ta wiadomość została już wcześniej zgłoszona jako spam.
+    </div>
+    <div id="error" class="message error"></div>
+</body>
+</html>
