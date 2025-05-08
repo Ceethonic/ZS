@@ -34,18 +34,35 @@
 </head>
 <body>
   <h1>Zgłoś Spam</h1>
-  <p>Ta wtyczka działa tylko w Outlook Mobile i umożliwia przekazanie wiadomości do działu bezpieczeństwa.</p>
+  <p>Po kliknięciu zostanie przygotowana wiadomość z tematem i nadawcą do działu bezpieczeństwa.</p>
   <button class="button" id="reportBtn">Zgłoś jako spam</button>
   <div class="message" id="resultMessage"></div>
 
   <script>
     Office.onReady(() => {
       document.getElementById("reportBtn").addEventListener("click", () => {
-        // Otwiera natywną aplikację poczty z predefiniowanym tematem i treścią
-        window.location.href = "mailto:tomaszciszewski01@gmail.com?subject=Spam zgłoszenie&body=Proszę sprawdzić załączoną wiadomość. Została oznaczona jako spam.";
-        document.getElementById("resultMessage").textContent = "Otworzono nową wiadomość. Wystarczy kliknąć 'Wyślij'.";
+        const item = Office.context.mailbox.item;
+
+        if (!item || !item.subject || !item.from) {
+          showMessage("Nie można pobrać szczegółów wiadomości.");
+          return;
+        }
+
+        const subject = encodeURIComponent("SPAM: " + item.subject);
+        const body = encodeURIComponent(
+          `Zgłoszenie spamu\n\nTemat wiadomości: ${item.subject}\nNadawca: ${item.from.emailAddress || item.from.displayName}\n\nProszę o analizę tej wiadomości.`
+        );
+
+        const mailtoLink = `mailto:tomaszciszewski01@gmail.com?subject=${subject}&body=${body}`;
+        window.location.href = mailtoLink;
+        showMessage("Otworzono nową wiadomość do działu bezpieczeństwa.");
       });
     });
+
+    function showMessage(msg) {
+      const div = document.getElementById("resultMessage");
+      div.textContent = msg;
+    }
   </script>
 </body>
 </html>
