@@ -14,36 +14,10 @@
             // Sprawdź parametry URL
             var urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('action') === 'reportSpam') {
-                // Jeśli przyszliśmy z indeksu, wywołaj funkcję sprawdzającą
-                checkIfAlreadyReported();
-            }
-        });
-        
-        // Funkcja sprawdzająca czy wiadomość została już zgłoszona
-        function checkIfAlreadyReported() {
-            try {
-                var messageId = Office.context.mailbox.item.internetMessageId;
-                var userEmail = Office.context.mailbox.userProfile.emailAddress;
-                
-                // Klucz do localStorage będzie kombinacją ID wiadomości i adresu email użytkownika
-                var storageKey = "spam_reported_" + messageId + "_" + userEmail;
-                
-                // Sprawdzamy czy wiadomość została już zgłoszona
-                var alreadyReported = localStorage.getItem(storageKey);
-                
-                if (alreadyReported) {
-                    showNotification("Ta wiadomość została już wcześniej zgłoszona jako spam.");
-                    document.getElementById("alreadyReported").style.display = "block";
-                } else {
-                    // Jeśli nie została zgłoszona, raportujemy i zapisujemy informację
-                    reportSpam();
-                    localStorage.setItem(storageKey, new Date().toISOString());
-                }
-            } catch (error) {
-                // Jeśli wystąpi błąd przy sprawdzaniu, kontynuujemy zgłaszanie
+                // Jeśli przyszliśmy z indeksu, wywołaj funkcję raportowania
                 reportSpam();
             }
-        }
+        });
         
         // Główna funkcja zgłaszania spamu
         function reportSpam() {
@@ -60,42 +34,19 @@
                     name: "original_spam_message.eml"
                 }];
                 
-                // Przesłanie wiadomości do działu bezpieczeństwa automatycznie
-                // Tworzenie obiektu wiadomości e-mail
-                var emailDetails = {
+                // Przesłanie wiadomości do działu bezpieczeństwa
+                Office.context.mailbox.displayNewMessageForm({
                     toRecipients: ["tomaszciszewski01@gmail.com"],
                     subject: subject,
                     htmlBody: body,
                     attachments: attachments
-                };
+                });
                 
-                // Próba wysłania wiadomości automatycznie przez EWS
-                try {
-                    Office.context.mailbox.makeEwsRequestAsync(
-                        getEwsSendMessageXml(emailDetails),
-                        function(asyncResult) {
-                            if (asyncResult.status === Office.AsyncResultStatus.Succeeded) {
-                                // Pomyślnie wysłano wiadomość
-                                showNotification("Wiadomość została zgłoszona jako spam");
-                                document.getElementById("confirmation").style.display = "block";
-                                
-                                // Przenieś wiadomość do kosza
-                                moveToTrash();
-                            } else {
-                                // Wystąpił błąd, spróbuj alternatywnej metody wysyłania
-                                fallbackSendMethod(emailDetails);
-                            }
-                        }
-                    );
-                } catch (error) {
-                    // Błąd przy wysyłaniu, użyj alternatywnej metody
-                    fallbackSendMethod({
-                        toRecipients: ["tomaszciszewski01@gmail.com"],
-                        subject: subject,
-                        htmlBody: body,
-                        attachments: attachments
-                    });
-                }
+                // Powiadomienie użytkownika
+                showNotification("Wiadomość została zgłoszona jako spam");
+                
+                // Wyświetl potwierdzenie na stronie
+                document.getElementById("confirmation").style.display = "block";
             } catch (error) {
                 console.error("Błąd zgłaszania spamu:", error);
                 document.getElementById("error").textContent = "Wystąpił błąd: " + error.message;
@@ -103,157 +54,64 @@
             }
         }
         
-        // Funkcja przesuwająca wiadomość do kosza
-        function moveToTrash() {
+        // Pomocnicza funkcja do wyświetlania powiadomień
+        function showNotification(message) {
             try {
-                // Próbujemy różnych metod przeniesienia do kosza
-                tryMoveToTrashMethods();
-            } catch (error) {
-                document.getElementById("error").textContent = "Nie udało się przenieść wiadomości do kosza: " + error.message;
-                document.getElementById("error").style.display = "block";
-                
-                // Mimo błędu, pokazujemy częściowe potwierdzenie
-                document.getElementById("partialConfirmation").style.display = "block";
-            }
-        }
-        
-        // Funkcja próbująca różnych metod przeniesienia do kosza
-        function tryMoveToTrashMethods() {
-            var moved = false;
-            
-            // Metoda 1: move (dla nowszych wersji Outlook)
-            try {
-                if (Office.context.mailbox.item.move && typeof Office.context.mailbox.item.move === 'function') {
-                    Office.context.mailbox.item.move("Deleted Items", function(result) {
-                        if (result.status === Office.AsyncResultStatus.Succeeded) {
-                            document.getElementById("confirmation").style.display = "block";
-                            moved = true;
-                        } else {
-                            tryNextMoveMethod(moved);
-                        }
+                // Próba użycia natywnych powiadomień Outlook
+                if (Office.context.mailbox && Office.context.mailbox.item && 
+                    Office.context.mailbox.item.notificationMessages) {
+                    Office.context.mailbox.item.notificationMessages.addAsync("spamReportNotification", {
+                        type: "informationalMessage",
+                        message: message,
+                        icon: "icon-16",
+                        persistent: false
                     });
-                    return; // Wyjdź i czekaj na callback
+                } else {
+                    // Alternatywnie wyświetl alert
+                    alert(message);
                 }
             } catch (error) {
-                console.log("Błąd metody move:", error.message);
+                // W przypadku błędu, wyświetl alert
+                alert(message);
             }
-            
-            tryNextMoveMethod(moved);
         }
         
-        // Kontynuuj próby z kolejnymi metodami
-        function tryNextMoveMethod(moved) {
-            if (moved) return;
-            
-            // Metoda 2: moveToFolderAsync (dla niektórych wersji)
-            try {
-                if (typeof Office.context.mailbox.item.moveToFolderAsync === 'function') {
-                    Office.context.mailbox.item.moveToFolderAsync("deleteditems", function(result) {
-                        if (result.status === Office.AsyncResultStatus.Succeeded) {
-                            document.getElementById("confirmation").style.display = "block";
-                            moved = true;
-                        } else {
-                            tryEwsMethod(moved);
-                        }
-                    });
-                    return; // Wyjdź i czekaj na callback
-                }
-            } catch (error) {
-                console.log("Błąd metody moveToFolderAsync:", error.message);
-            }
-            
-            tryEwsMethod(moved);
+        // Eksportowanie funkcji dla Office JS
+        Office.actions.associate("reportSpam", reportSpam);
+    </script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            text-align: center;
         }
-        
-        // Próba użycia EWS API
-        function tryEwsMethod(moved) {
-            if (moved) return;
-            
-            // Metoda 3: EWS API (dla starszych wersji)
-            try {
-                if (Office.context.mailbox.makeEwsRequestAsync) {
-                    var itemId = Office.context.mailbox.item.itemId;
-                    if (itemId) {
-                        var ewsRequest = 
-                            '<?xml version="1.0" encoding="utf-8"?>' +
-                            '<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ' +
-                            'xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages" ' +
-                            'xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types" ' +
-                            'xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">' +
-                            '  <soap:Header>' +
-                            '    <t:RequestServerVersion Version="Exchange2013" />' +
-                            '  </soap:Header>' +
-                            '  <soap:Body>' +
-                            '    <m:MoveItem>' +
-                            '      <m:ToFolderId>' +
-                            '        <t:DistinguishedFolderId Id="deleteditems"/>' +
-                            '      </m:ToFolderId>' +
-                            '      <m:ItemIds>' +
-                            '        <t:ItemId Id="' + itemId + '"/>' +
-                            '      </m:ItemIds>' +
-                            '    </m:MoveItem>' +
-                            '  </soap:Body>' +
-                            '</soap:Envelope>';
-                        
-                        Office.context.mailbox.makeEwsRequestAsync(ewsRequest, function(result) {
-                            if (result.status === Office.AsyncResultStatus.Succeeded) {
-                                document.getElementById("confirmation").style.display = "block";
-                                moved = true;
-                            } else {
-                                // Jeśli wszystkie metody zawiodły, pokazujemy częściowe potwierdzenie
-                                document.getElementById("partialConfirmation").style.display = "block";
-                            }
-                        });
-                        return; // Wyjdź i czekaj na callback
-                    }
-                }
-            } catch (error) {
-                console.log("Błąd metody EWS:", error.message);
-            }
-            
-            // Jeśli wszystkie metody zawiodły, pokazujemy częściowe potwierdzenie
-            document.getElementById("partialConfirmation").style.display = "block";
+        h1 {
+            font-size: 24px;
         }
-        
-        // Funkcja tworząca żądanie SOAP dla EWS w celu wysłania wiadomości
-        function getEwsSendMessageXml(emailDetails) {
-            var recipients = '';
-            emailDetails.toRecipients.forEach(function(recipient) {
-                recipients += '<t:Mailbox><t:EmailAddress>' + recipient + '</t:EmailAddress></t:Mailbox>';
-            });
-            
-            var xml = '<?xml version="1.0" encoding="utf-8"?>' +
-                '<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ' +
-                'xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages" ' +
-                'xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types" ' +
-                'xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">' +
-                '  <soap:Header>' +
-                '    <t:RequestServerVersion Version="Exchange2013" />' +
-                '  </soap:Header>' +
-                '  <soap:Body>' +
-                '    <m:CreateItem MessageDisposition="SendAndSaveCopy">' +
-                '      <m:Items>' +
-                '        <t:Message>' +
-                '          <t:Subject>' + emailDetails.subject + '</t:Subject>' +
-                '          <t:Body BodyType="HTML">' + emailDetails.htmlBody + '</t:Body>' +
-                '          <t:ToRecipients>' + recipients + '</t:ToRecipients>' +
-                '        </t:Message>' +
-                '      </m:Items>' +
-                '    </m:CreateItem>' +
-                '  </soap:Body>' +
-                '</soap:Envelope>';
-                
-            return xml;
+        .message {
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 4px;
         }
-        
-        // Funkcja alternatywna dla wysyłania wiadomości
-        function fallbackSendMethod(emailDetails) {
-            try {
-                // Użyj displayNewMessageForm jako alternatywnej metody
-                Office.context.mailbox.displayNewMessageForm(emailDetails);
-                
-                // Wyświetl informację, że użytkownik musi ręcznie zatwierdzić
-                showNotification("Proszę kliknąć 'Wyślij' aby zakończyć zgłaszanie spamu");
-                document.getElementById("manualConfirmation").style.display = "block";
-            } catch (error) {
-                document.getElementById("error").text
+        .confirmation {
+            background-color: #e6f7e6;
+            color: #2e7d32;
+            display: none;
+        }
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Zgłaszanie Spamu</h1>
+    <div id="confirmation" class="message confirmation">
+        Wiadomość została zgłoszona jako spam. Dziękujemy za pomoc w utrzymaniu bezpieczeństwa!
+    </div>
+    <div id="error" class="message error"></div>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'93c8be752fbac079',t:'MTc0NjcwNTA3My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
