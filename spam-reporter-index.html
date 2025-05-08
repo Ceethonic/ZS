@@ -158,56 +158,106 @@
         
         // Funkcja kontynuująca proces po pobraniu danych
         function continueProcessing(originalSubject, userEmail, originalSender, messageBody) {
-            // Spróbuj przenieść wiadomość do kosza
-            if (Office.context.mailbox.item.categories) {
-                // Najpierw oznaczamy wiadomość specjalną kategorią 
-                Office.context.mailbox.item.categories.addAsync(["SPAM"], function(result) {
-                    // Próba przeniesienia do kosza za pomocą właściwości itemId
-                    if (Office.context.mailbox.item.itemId) {
-                        try {
-                            var itemId = Office.context.mailbox.item.itemId;
-                            
-                            // Używamy metody wspieranej przez wszystkie wersje Outlook
-                            Office.context.mailbox.item.moveToFolderAsync("deleteditems", function(result) {
-                                if (result.status === Office.AsyncResultStatus.Succeeded) {
-                                    // Powodzenie - wiadomość przeniesiona do kosza
-                                    showNotification("Wiadomość została przeniesiona do kosza i zgłoszona jako spam");
-                                } else {
-                                    showNotification("Wiadomość została zgłoszona, ale nie można jej przenieść do kosza");
-                                }
-                                
-                                // Niezależnie od wyniku przeniesienia, wysyłamy raport
-                                sendSpamReport(originalSubject, userEmail, originalSender, messageBody);
-                            });
-                        } catch (error) {
-                            // Jeśli nie udało się przenieść, wysyłamy raport
-                            showNotification("Nie można przenieść do kosza: " + error.message);
-                            sendSpamReport(originalSubject, userEmail, originalSender, messageBody);
-                        }
-                    } else {
-                        // Brak itemId, wysyłamy tylko raport
-                        sendSpamReport(originalSubject, userEmail, originalSender, messageBody);
-                    }
-                });
-            } else {
-                // Brak wsparcia dla kategorii - próbujemy przenieść bezpośrednio
-                try {
-                    Office.context.mailbox.item.moveToFolderAsync("deleteditems", function(result) {
+            // Najpierw oznaczamy wiadomość specjalną kategorią, jeśli to możliwe
+            try {
+                if (Office.context.mailbox.item.categories && typeof Office.context.mailbox.item.categories.addAsync === 'function') {
+                    Office.context.mailbox.item.categories.addAsync(["SPAM"], function(result) {
+                        // Po oznaczeniu kategorią, próbujemy przenieść do kosza
+                        tryMoveToTrash(originalSubject, userEmail, originalSender, messageBody);
+                    });
+                } else {
+                    // Jeśli nie ma wsparcia dla kategorii, przechodzimy dalej
+                    tryMoveToTrash(originalSubject, userEmail, originalSender, messageBody);
+                }
+            } catch (error) {
+                console.log("Błąd podczas dodawania kategorii: " + error.message);
+                // Kontynuujemy mimo błędu
+                tryMoveToTrash(originalSubject, userEmail, originalSender, messageBody);
+            }
+        }
+        
+        // Funkcja próbująca różnych metod przeniesienia do kosza
+        function tryMoveToTrash(originalSubject, userEmail, originalSender, messageBody) {
+            var moved = false;
+            
+            // Metoda 1: moveAsync (dla nowszych wersji Outlook)
+            try {
+                if (Office.context.mailbox.item.move && typeof Office.context.mailbox.item.move === 'function') {
+                    Office.context.mailbox.item.move("Deleted Items", function(result) {
                         if (result.status === Office.AsyncResultStatus.Succeeded) {
                             showNotification("Wiadomość została przeniesiona do kosza i zgłoszona jako spam");
-                        } else {
-                            showNotification("Wiadomość została zgłoszona, ale nie można jej przenieść do kosza");
+                            moved = true;
                         }
-                        
                         // Niezależnie od wyniku przeniesienia, wysyłamy raport
                         sendSpamReport(originalSubject, userEmail, originalSender, messageBody);
                     });
-                } catch (error) {
-                    // Jeśli nie udało się przenieść, wysyłamy raport
-                    showNotification("Nie można przenieść do kosza: " + error.message);
-                    sendSpamReport(originalSubject, userEmail, originalSender, messageBody);
+                    return; // Zakończ, czekamy na callback
                 }
+            } catch (error) {
+                console.log("Błąd moveAsync: " + error.message);
             }
+            
+            // Metoda 2: moveToFolderAsync (dla niektórych wersji)
+            try {
+                if (!moved && typeof Office.context.mailbox.item.moveToFolderAsync === 'function') {
+                    Office.context.mailbox.item.moveToFolderAsync("deleteditems", function(result) {
+                        if (result.status === Office.AsyncResultStatus.Succeeded) {
+                            showNotification("Wiadomość została przeniesiona do kosza i zgłoszona jako spam");
+                            moved = true;
+                        }
+                        // Niezależnie od wyniku przeniesienia, wysyłamy raport
+                        sendSpamReport(originalSubject, userEmail, originalSender, messageBody);
+                    });
+                    return; // Zakończ, czekamy na callback
+                }
+            } catch (error) {
+                console.log("Błąd moveToFolderAsync: " + error.message);
+            }
+            
+            // Metoda 3: EWS API (dla starszych wersji)
+            try {
+                if (!moved && Office.context.mailbox.makeEwsRequestAsync) {
+                    var itemId = Office.context.mailbox.item.itemId;
+                    if (itemId) {
+                        var ewsRequest = 
+                            '<?xml version="1.0" encoding="utf-8"?>' +
+                            '<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ' +
+                            'xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages" ' +
+                            'xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types" ' +
+                            'xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">' +
+                            '  <soap:Header>' +
+                            '    <t:RequestServerVersion Version="Exchange2013" />' +
+                            '  </soap:Header>' +
+                            '  <soap:Body>' +
+                            '    <m:MoveItem>' +
+                            '      <m:ToFolderId>' +
+                            '        <t:DistinguishedFolderId Id="deleteditems"/>' +
+                            '      </m:ToFolderId>' +
+                            '      <m:ItemIds>' +
+                            '        <t:ItemId Id="' + itemId + '"/>' +
+                            '      </m:ItemIds>' +
+                            '    </m:MoveItem>' +
+                            '  </soap:Body>' +
+                            '</soap:Envelope>';
+                        
+                        Office.context.mailbox.makeEwsRequestAsync(ewsRequest, function(result) {
+                            if (result.status === Office.AsyncResultStatus.Succeeded) {
+                                showNotification("Wiadomość została przeniesiona do kosza i zgłoszona jako spam");
+                                moved = true;
+                            }
+                            // Niezależnie od wyniku przeniesienia, wysyłamy raport
+                            sendSpamReport(originalSubject, userEmail, originalSender, messageBody);
+                        });
+                        return; // Zakończ, czekamy na callback
+                    }
+                }
+            } catch (error) {
+                console.log("Błąd EWS: " + error.message);
+            }
+            
+            // Jeśli żadna metoda nie zadziałała, wyślij tylko raport
+            showNotification("Nie można przenieść wiadomości do kosza, ale zostanie zgłoszona jako spam");
+            sendSpamReport(originalSubject, userEmail, originalSender, messageBody);
         }
         
         // Funkcja wysyłająca raport o spamie
@@ -251,53 +301,6 @@
                 // Dla starszych wersji, używamy fallback
                 fallbackSendMethod(emailDetails);
             }
-        }
-        
-        // Funkcja alternatywna dla wysyłania wiadomości
-        function fallbackSendMethod(emailDetails) {
-            try {
-                // Użyj displayNewMessageForm jako alternatywnej metody
-                Office.context.mailbox.displayNewMessageForm(emailDetails);
-                
-                // Wyświetl informację, że użytkownik musi ręcznie zatwierdzić
-                showNotification("Proszę kliknąć 'Wyślij' aby zakończyć zgłaszanie spamu");
-                
-                // Nadal możemy przenieść wiadomość do kosza
-                moveToTrash();
-            } catch (error) {
-                showNotification("Nie udało się automatycznie wysłać zgłoszenia: " + error.message);
-            }
-        }
-        
-        // Funkcja tworząca żądanie SOAP dla EWS w celu wysłania wiadomości
-        function getEwsSendMessageXml(emailDetails) {
-            var recipients = '';
-            emailDetails.toRecipients.forEach(function(recipient) {
-                recipients += '<t:Mailbox><t:EmailAddress>' + recipient + '</t:EmailAddress></t:Mailbox>';
-            });
-            
-            var xml = '<?xml version="1.0" encoding="utf-8"?>' +
-                '<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ' +
-                'xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages" ' +
-                'xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types" ' +
-                'xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">' +
-                '  <soap:Header>' +
-                '    <t:RequestServerVersion Version="Exchange2013" />' +
-                '  </soap:Header>' +
-                '  <soap:Body>' +
-                '    <m:CreateItem MessageDisposition="SendAndSaveCopy">' +
-                '      <m:Items>' +
-                '        <t:Message>' +
-                '          <t:Subject>' + emailDetails.subject + '</t:Subject>' +
-                '          <t:Body BodyType="HTML">' + emailDetails.htmlBody + '</t:Body>' +
-                '          <t:ToRecipients>' + recipients + '</t:ToRecipients>' +
-                '        </t:Message>' +
-                '      </m:Items>' +
-                '    </m:CreateItem>' +
-                '  </soap:Body>' +
-                '</soap:Envelope>';
-                
-            return xml;
         }
         
         // Funkcja alternatywna dla wysyłania wiadomości
