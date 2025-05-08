@@ -96,7 +96,7 @@
     <div class="loading" id="loadingIndicator">Zbieranie danych...</div>
     <div class="message" id="resultMessage"></div>
     <div class="footer">
-      <p><a href="https://ratels.pl/polityka-prywatnosci/" target="_blank">Polityka prywatnościi</a></p>
+      <p><a href="https://ratels.pl/polityka-prywatnosci/" target="_blank">Polityka prywatności</a></p>
     </div>
   </div>
 
@@ -183,7 +183,7 @@
             links.length > 0 ? "Wiadomość zawierała następujące linki:" : "Nie znaleziono linków w treści wiadomości.",
             ...links.map(link => "- " + link),
             "",
-            "Prosimy o analizę tej wiadomości pod kątem zagrożeń bezpieczeństwa."
+            "Prosze o zablokowanie wiadomości"
           ].join("\n");
 
           const subjectEncoded = encodeURIComponent("SPAM: " + data.subject);
