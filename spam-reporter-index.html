@@ -40,29 +40,27 @@
 
     <script>
         Office.onReady(() => {
-            document.getElementById("reportBtn").addEventListener("click", reportSpam);
+            document.getElementById("reportBtn").addEventListener("click", forwardMessage);
         });
 
-        function reportSpam() {
+        function forwardMessage() {
             const mailbox = Office.context.mailbox;
-            if (!mailbox || !mailbox.displayNewMessageForm) {
-                showMessage("Twoja wersja Outlooka nie wspiera tej funkcji.");
+            const item = mailbox.item;
+
+            if (!item || !item.itemId || !mailbox.convertToEwsIdAsync || !mailbox.displayMessageForm) {
+                showMessage("Twoja wersja Outlooka nie obsługuje automatycznego przekazania wiadomości. Przekaż ją ręcznie na: tomaszciszewski01@gmail.com");
                 return;
             }
 
-            const subject = "SPAM ALERT";
-            const body = `
-                Użytkownik ${mailbox.userProfile.emailAddress} oznaczył wiadomość jako spam.
-                Prosimy o sprawdzenie skrzynki oraz ręczne podjęcie działań blokujących nadawcę.
-            `;
-
-            mailbox.displayNewMessageForm({
-                toRecipients: ["tomaszciszewski01@gmail.com"],
-                subject: subject,
-                htmlBody: body
+            mailbox.convertToEwsIdAsync(item.itemId, (result) => {
+                if (result.status === Office.AsyncResultStatus.Succeeded) {
+                    const ewsId = result.value;
+                    mailbox.displayMessageForm(ewsId);
+                    showMessage("Otworzono wiadomość do przekazania dalej. Wybierz odbiorcę: tomaszciszewski01@gmail.com");
+                } else {
+                    showMessage("Nie udało się przygotować wiadomości. Przekaż ją ręcznie na: tomaszciszewski01@gmail.com");
+                }
             });
-
-            showMessage("Utworzono wiadomość do działu bezpieczeństwa.");
         }
 
         function showMessage(msg) {
