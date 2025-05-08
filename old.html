@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Zgłoś Spam</title>
   <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -21,6 +22,12 @@
       border-radius: 8px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.05);
       text-align: center;
+    }
+    .icon {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 16px;
+      color: #d97706;
     }
     h1 {
       font-size: 22px;
@@ -55,15 +62,21 @@
 </head>
 <body>
   <div class="container">
+    <div id="iconPlaceholder" class="icon"></div>
     <h1>Zgłoszenie podejrzanej wiadomości</h1>
     <p>
-      Po kliknięciu przycisku zostanie przygotowana wiadomość e-mail do zespołu bezpieczeństwa, zawierająca podstawowe informacje o zgłoszonej wiadomości.
+      Po kliknięciu przycisku zostanie przygotowana wiadomość e-mail do zespołu bezpieczeństwa,
+      zawierająca podstawowe informacje o zgłaszanej wiadomości.
     </p>
     <button class="button" id="reportBtn">Zgłoś jako spam</button>
     <div class="message" id="resultMessage"></div>
   </div>
 
   <script>
+    // Inicjalizacja ikony
+    lucide.createIcons();
+    document.getElementById("iconPlaceholder").innerHTML = lucide.icons["mail-warning"].toSvg();
+
     Office.onReady(() => {
       document.getElementById("reportBtn").addEventListener("click", () => {
         const item = Office.context.mailbox.item;
@@ -88,11 +101,11 @@
         const messageId = item.internetMessageId || "(brak)";
 
         const body = encodeURIComponent(
-          `Zgłoszenie potencjalnego spamu\n\n` +
+          `Zgłoszenie spamu\n\n` +
           `Temat wiadomości: ${item.subject}\n` +
           `Nadawca: ${from}\n` +
           `Message-ID: ${messageId}\n\n` +
-          `Proszę o analizę tej wiadomości pod kątem bezpieczeństwa.`
+          `Proszę o analizę tej wiadomości.`
         );
 
         const mailtoLink = `mailto:tomaszciszewski01@gmail.com?subject=${subject}&body=${body}`;
