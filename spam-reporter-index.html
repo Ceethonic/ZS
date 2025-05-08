@@ -84,13 +84,26 @@
     
     // Funkcja do pobierania podstawowych danych kompatybilnych z mobilnym Outlookiem
     function getMobileCompatibleData(item) {
-      // Mobilny Outlook ma ograniczone API, więc pobieramy tylko podstawowe informacje
-      return {
+      // Inicjalizacja obiektu z podstawowymi danymi
+      const data = {
         subject: item.subject || "(brak tematu)",
         sender: item.from ? (item.from.emailAddress || item.from.displayName) : "(nieznany nadawca)",
         receivedTime: item.dateTimeCreated ? item.dateTimeCreated.toLocaleString() : "(nieznany czas)",
-        messageId: item.internetMessageId || "(brak ID)"
+        messageId: item.internetMessageId || "(brak ID)",
+        body: "(treść wiadomości niedostępna)"
       };
+      
+      // Próba pobrania treści wiadomości
+      if (Office.context.mailbox.item.body) {
+        // Używamy getAsync dla kompatybilności z wszystkimi wersjami Outlooka (w tym mobile)
+        Office.context.mailbox.item.body.getAsync(Office.CoercionType.Text, function(result) {
+          if (result.status === Office.AsyncResultStatus.Succeeded) {
+            data.body = result.value || "(pusta treść)";
+          }
+        });
+      }
+      
+      return data;
     }
 
     Office.onReady(() => {
@@ -119,26 +132,46 @@
             return;
           }
           
-          // Tworzymy prostą treść wiadomości, która zadziała na każdej platformie
-          const body = [
-            "Zgłoszenie spamu - szczegóły wiadomości:",
-            "",
-            `Temat: ${data.subject}`,
-            `Nadawca: ${data.sender}`,
-            `Data otrzymania: ${data.receivedTime}`,
-            `ID wiadomości: ${data.messageId}`,
-            "",
-            "Prosimy o analizę tej wiadomości pod kątem zagrożeń bezpieczeństwa."
-          ].join("\n");
+          // Pobieramy treść wiadomości asynchronicznie dla lepszej kompatybilności z mobilnym Outlookiem
+          Office.context.mailbox.item.body.getAsync(Office.CoercionType.Text, function(result) {
+            let messageBody = "(treść wiadomości niedostępna)";
+            
+            if (result.status === Office.AsyncResultStatus.Succeeded) {
+              messageBody = result.value || "(pusta treść)";
+              // Ograniczamy długość treści do 1000 znaków aby uniknąć problemów z długimi wiadomościami
+              if (messageBody.length > 1000) {
+                messageBody = messageBody.substring(0, 997) + "...";
+              }
+            }
+            
+            // Tworzymy treść wiadomości, która zadziała na każdej platformie
+            const body = [
+              "Zgłoszenie spamu - szczegóły wiadomości:",
+              "",
+              `Temat: ${data.subject}`,
+              `Nadawca: ${data.sender}`,
+              `Data otrzymania: ${data.receivedTime}`,
+              `ID wiadomości: ${data.messageId}`,
+              "",
+              "--- Treść podejrzanej wiadomości ---",
+              messageBody,
+              "",
+              "--- Koniec treści podejrzanej wiadomości ---",
+              "",
+              "Prosimy o analizę tej wiadomości pod kątem zagrożeń bezpieczeństwa."
+            ].join("\n");
+            
+            // Utworzenie linku mailto z kodowaniem URI
+            const encodedSubject = encodeURIComponent("SPAM: " + data.subject);
+            const encodedBody = encodeURIComponent(body);
+            const mailtoLink = `mailto:tomaszciszewski01@gmail.com?subject=${encodedSubject}&body=${encodedBody}`;
+            
+            // Otwarcie nowej wiadomości
+            window.location.href = mailtoLink;
+            showMessage("Otworzono nową wiadomość do działu bezpieczeństwa.");
+          });
           
-          // Utworzenie linku mailto z kodowaniem URI
-          const encodedSubject = encodeURIComponent("SPAM: " + data.subject);
-          const encodedBody = encodeURIComponent(body);
-          const mailtoLink = `mailto:tomaszciszewski01@gmail.com?subject=${encodedSubject}&body=${encodedBody}`;
-          
-          // Otwarcie nowej wiadomości
-          window.location.href = mailtoLink;
-          showMessage("Otworzono nową wiadomość do działu bezpieczeństwa.");
+          // Te linie zostały przeniesione do callback funkcji getAsync
           
         } catch (error) {
           showMessage("Wystąpił błąd: " + (error.message || "nieznany błąd"));
