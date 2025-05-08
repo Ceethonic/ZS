@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zgłoś Spam</title>
+  <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background-color: #f5f7fa;
+      color: #333;
+    }
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+      background-color: #fff;
+      padding: 32px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      text-align: center;
+    }
+    h1 {
+      font-size: 22px;
+      margin-bottom: 12px;
+      color: #2f4f6f;
+    }
+    p {
+      font-size: 15px;
+      margin-bottom: 20px;
+    }
+    .button {
+      background-color: #005a9e;
+      color: white;
+      border: none;
+      padding: 12px 28px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background-color 0.2s ease;
+    }
+    .button:hover {
+      background-color: #004885;
+    }
+    .message {
+      margin-top: 24px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #1a3d5d;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Zgłoszenie podejrzanej wiadomości</h1>
+    <p>
+      Po kliknięciu przycisku zostanie przygotowana wiadomość e-mail do zespołu bezpieczeństwa, zawierająca podstawowe informacje o zgłoszonej wiadomości.
+    </p>
+    <button class="button" id="reportBtn">Zgłoś jako spam</button>
+    <div class="message" id="resultMessage"></div>
+  </div>
+
+  <script>
+    Office.onReady(() => {
+      document.getElementById("reportBtn").addEventListener("click", () => {
+        const item = Office.context.mailbox.item;
+
+        if (!item || !item.subject || !item.from || !item.itemId) {
+          showMessage("Nie udało się odczytać danych wiadomości. Proszę spróbować ponownie.");
+          return;
+        }
+
+        const itemId = item.itemId;
+        const localKey = "reported_" + itemId;
+
+        if (localStorage.getItem(localKey)) {
+          showMessage("Ta wiadomość została już wcześniej zgłoszona jako spam. Dziękujemy.");
+          return;
+        }
+
+        localStorage.setItem(localKey, "1");
+
+        const subject = encodeURIComponent("SPAM: " + item.subject);
+        const from = item.from.emailAddress || item.from.displayName;
+        const messageId = item.internetMessageId || "(brak)";
+
+        const body = encodeURIComponent(
+          `Zgłoszenie potencjalnego spamu\n\n` +
+          `Temat wiadomości: ${item.subject}\n` +
+          `Nadawca: ${from}\n` +
+          `Message-ID: ${messageId}\n\n` +
+          `Proszę o analizę tej wiadomości pod kątem bezpieczeństwa.`
+        );
+
+        const mailtoLink = `mailto:tomaszciszewski01@gmail.com?subject=${subject}&body=${body}`;
+        window.location.href = mailtoLink;
+
+        showMessage("Wiadomość została przekazana do zespołu bezpieczeństwa.");
+      });
+    });
+
+    function showMessage(msg) {
+      const div = document.getElementById("resultMessage");
+      div.textContent = msg;
+    }
+  </script>
+</body>
+</html>
