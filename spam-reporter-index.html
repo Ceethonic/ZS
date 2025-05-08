@@ -22,65 +22,137 @@
       cursor: pointer;
       border-radius: 5px;
       margin-top: 20px;
+      width: 80%;
+      max-width: 300px;
     }
     .button:hover {
       background-color: #005a9e;
     }
+    .button:active {
+      background-color: #004578;
+    }
     .message {
       margin-top: 20px;
       font-weight: bold;
+      padding: 0 15px;
+    }
+    .loading {
+      display: none;
+      margin-top: 20px;
+    }
+    /* Style dla mobile */
+    @media (max-width: 600px) {
+      body {
+        padding: 15px 10px;
+      }
+      h1 {
+        font-size: 24px;
+      }
+      p {
+        font-size: 14px;
+      }
+      .button {
+        padding: 10px 20px;
+        width: 90%;
+      }
     }
   </style>
 </head>
 <body>
   <h1>Zgłoś Spam</h1>
-  <p>Po kliknięciu zostanie przygotowana wiadomość z tematem, nadawcą i identyfikatorem wiadomości.</p>
+  <p>Po kliknięciu zostanie przygotowana wiadomość z informacjami do działu bezpieczeństwa.</p>
   <button class="button" id="reportBtn">Zgłoś jako spam</button>
+  <div class="loading" id="loadingIndicator">Zbieranie danych...</div>
   <div class="message" id="resultMessage"></div>
 
   <script>
+    // Zapisywanie zgłoszonych wiadomości w localStorage
+    function saveReportedMessage(messageId) {
+      try {
+        const reportedMessages = JSON.parse(localStorage.getItem('reportedSpamMessages') || '[]');
+        if (!reportedMessages.includes(messageId)) {
+          reportedMessages.push(messageId);
+          localStorage.setItem('reportedSpamMessages', JSON.stringify(reportedMessages));
+          return false; // Nie zgłoszono wcześniej
+        }
+        return true; // Zgłoszono wcześniej
+      } catch (e) {
+        console.error("Błąd podczas sprawdzania historii zgłoszeń:", e);
+        return false; // W przypadku błędu zakładamy, że nie zgłoszono
+      }
+    }
+    
+    // Funkcja do pobierania podstawowych danych kompatybilnych z mobilnym Outlookiem
+    function getMobileCompatibleData(item) {
+      // Mobilny Outlook ma ograniczone API, więc pobieramy tylko podstawowe informacje
+      return {
+        subject: item.subject || "(brak tematu)",
+        sender: item.from ? (item.from.emailAddress || item.from.displayName) : "(nieznany nadawca)",
+        receivedTime: item.dateTimeCreated ? item.dateTimeCreated.toLocaleString() : "(nieznany czas)",
+        messageId: item.internetMessageId || "(brak ID)"
+      };
+    }
+
     Office.onReady(() => {
       document.getElementById("reportBtn").addEventListener("click", () => {
-        const item = Office.context.mailbox.item;
+        const loadingIndicator = document.getElementById("loadingIndicator");
+        loadingIndicator.style.display = "block";
+        
+        try {
+          const item = Office.context.mailbox.item;
+          
+          if (!item) {
+            showMessage("Nie można pobrać szczegółów wiadomości.");
+            loadingIndicator.style.display = "none";
+            return;
+          }
 
-        if (!item || !item.subject || !item.from || !item.itemId) {
-          showMessage("Nie można pobrać szczegółów wiadomości.");
-          return;
+          // Pobieramy podstawowe dane kompatybilne z mobilnym Outlookiem
+          const data = getMobileCompatibleData(item);
+          
+          // Sprawdzamy czy wiadomość była już zgłaszana
+          const wasReportedBefore = saveReportedMessage(data.messageId);
+          
+          if (wasReportedBefore) {
+            showMessage("Ta wiadomość została już wcześniej zgłoszona.");
+            loadingIndicator.style.display = "none";
+            return;
+          }
+          
+          // Tworzymy prostą treść wiadomości, która zadziała na każdej platformie
+          const body = [
+            "Zgłoszenie spamu - szczegóły wiadomości:",
+            "",
+            `Temat: ${data.subject}`,
+            `Nadawca: ${data.sender}`,
+            `Data otrzymania: ${data.receivedTime}`,
+            `ID wiadomości: ${data.messageId}`,
+            "",
+            "Prosimy o analizę tej wiadomości pod kątem zagrożeń bezpieczeństwa."
+          ].join("\n");
+          
+          // Utworzenie linku mailto z kodowaniem URI
+          const encodedSubject = encodeURIComponent("SPAM: " + data.subject);
+          const encodedBody = encodeURIComponent(body);
+          const mailtoLink = `mailto:tomaszciszewski01@gmail.com?subject=${encodedSubject}&body=${encodedBody}`;
+          
+          // Otwarcie nowej wiadomości
+          window.location.href = mailtoLink;
+          showMessage("Otworzono nową wiadomość do działu bezpieczeństwa.");
+          
+        } catch (error) {
+          showMessage("Wystąpił błąd: " + (error.message || "nieznany błąd"));
+        } finally {
+          loadingIndicator.style.display = "none";
         }
-
-        const itemId = item.itemId;
-        const localKey = "reported_" + itemId;
-
-        if (localStorage.getItem(localKey)) {
-          showMessage("Ta wiadomość została już zgłoszona jako spam.");
-          return;
-        }
-
-        // zapisz, że wiadomość została zgłoszona
-        localStorage.setItem(localKey, "1");
-
-        const subject = encodeURIComponent("SPAM: " + item.subject);
-        const from = item.from.emailAddress || item.from.displayName;
-        const messageId = item.internetMessageId || "(brak)";
-
-        const body = encodeURIComponent(
-          `Zgłoszenie spamu\n\n` +
-          `Temat wiadomości: ${item.subject}\n` +
-          `Nadawca: ${from}\n` +
-          `Message-ID: ${messageId}\n\n` +
-          `Proszę o analizę tej wiadomości.`
-        );
-
-        const mailtoLink = `mailto:tomaszciszewski01@gmail.com?subject=${subject}&body=${body}`;
-        window.location.href = mailtoLink;
-
-        showMessage("Otworzono nową wiadomość do działu bezpieczeństwa.");
       });
     });
 
     function showMessage(msg) {
       const div = document.getElementById("resultMessage");
       div.textContent = msg;
+      div.style.color = msg.includes("błąd") ? "#d83b01" : 
+                        msg.includes("już wcześniej zgłoszona") ? "#f2c811" : "#107c10";
     }
   </script>
 </body>
