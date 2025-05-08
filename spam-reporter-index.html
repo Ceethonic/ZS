@@ -5,236 +5,184 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Zgłoś Spam</title>
   <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       margin: 0;
-      padding: 20px;
+      padding: 24px;
+      background-color: #f5f7fa;
       color: #333;
+    }
+    .container {
+      max-width: 540px;
+      margin: 0 auto;
+      background-color: #fff;
+      padding: 32px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
       text-align: center;
     }
+    .icon {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 16px;
+      color: #d97706;
+    }
+    h1 {
+      font-size: 22px;
+      margin-bottom: 12px;
+      color: #2f4f6f;
+    }
+    p {
+      font-size: 15px;
+      margin-bottom: 20px;
+    }
     .button {
-      background-color: #0078d4;
+      background-color: #005a9e;
       color: white;
       border: none;
-      padding: 12px 24px;
-      font-size: 16px;
+      padding: 12px 28px;
+      font-size: 15px;
+      font-weight: 500;
       cursor: pointer;
-      border-radius: 5px;
-      margin-top: 20px;
-      width: 80%;
-      max-width: 300px;
+      border-radius: 4px;
+      transition: background-color 0.2s ease;
     }
     .button:hover {
-      background-color: #005a9e;
-    }
-    .button:active {
-      background-color: #004578;
+      background-color: #004885;
     }
     .message {
-      margin-top: 20px;
-      font-weight: bold;
-      padding: 0 15px;
+      margin-top: 24px;
+      font-size: 14px;
+      font-weight: 500;
     }
-    .loading {
-      display: none;
-      margin-top: 20px;
-    }
-    /* Style dla mobile */
-    @media (max-width: 600px) {
-      body {
-        padding: 15px 10px;
-      }
-      h1 {
-        font-size: 24px;
-      }
-      p {
-        font-size: 14px;
-      }
-      .button {
-        padding: 10px 20px;
-        width: 90%;
-      }
-    }
+    .info { color: #107c10; }
+    .warning { color: #f2c811; }
+    .error { color: #d83b01; }
   </style>
 </head>
 <body>
-  <h1>Zgłoś Spam</h1>
-  <p>Po kliknięciu zostanie przygotowana wiadomość z informacjami do działu bezpieczeństwa.</p>
-  <button class="button" id="reportBtn">Zgłoś jako spam</button>
-  <div class="loading" id="loadingIndicator">Zbieranie danych...</div>
-  <div class="message" id="resultMessage"></div>
+  <div class="container">
+    <div id="iconPlaceholder" class="icon"></div>
+    <h1>Zgłoszenie podejrzanej wiadomości</h1>
+    <p>Po kliknięciu przycisku zostanie przygotowana wiadomość e-mail do zespołu bezpieczeństwa.</p>
+    <button class="button" id="reportBtn">Zgłoś jako spam</button>
+    <div class="message" id="resultMessage"></div>
+  </div>
 
   <script>
-    // Zapisywanie zgłoszonych wiadomości w localStorage
-    function saveReportedMessage(messageId) {
-      try {
-        const reportedMessages = JSON.parse(localStorage.getItem('reportedSpamMessages') || '[]');
-        if (!reportedMessages.includes(messageId)) {
-          reportedMessages.push(messageId);
-          localStorage.setItem('reportedSpamMessages', JSON.stringify(reportedMessages));
-          return false; // Nie zgłoszono wcześniej
-        }
-        return true; // Zgłoszono wcześniej
-      } catch (e) {
-        console.error("Błąd podczas sprawdzania historii zgłoszeń:", e);
-        return false; // W przypadku błędu zakładamy, że nie zgłoszono
-      }
-    }
-    
-    function getMobileCompatibleData(item) {
-      // Ta funkcja nie jest już używana, ale pozostawiono ją dla kompatybilności
-      return {
-        subject: item.subject || "(brak tematu)",
-        sender: item.from ? (item.from.emailAddress || item.from.displayName) : "(nieznany nadawca)",
-        receivedTime: item.dateTimeCreated ? item.dateTimeCreated.toLocaleString() : "(nieznany czas)",
-        messageId: item.internetMessageId || "(brak ID)",
-      };
+    // Ikona
+    lucide.createIcons();
+    document.getElementById("iconPlaceholder").innerHTML = lucide.icons["mail-warning"].toSvg();
+
+    function showMessage(msg, type = "info") {
+      const div = document.getElementById("resultMessage");
+      div.textContent = msg;
+      div.className = `message ${type}`;
     }
 
     Office.onReady(() => {
       document.getElementById("reportBtn").addEventListener("click", () => {
-        const loadingIndicator = document.getElementById("loadingIndicator");
-        loadingIndicator.style.display = "block";
-        
-        try {
-          const item = Office.context.mailbox.item;
-          
-          if (!item) {
-            showMessage("Nie można pobrać szczegółów wiadomości.");
-            loadingIndicator.style.display = "none";
-            return;
+        const item = Office.context.mailbox.item;
+
+        if (!item || !item.subject || !item.from || !item.itemId) {
+          showMessage("Nie można pobrać szczegółów wiadomości.", "error");
+          return;
+        }
+
+        const itemId = item.itemId;
+        const localKey = "reported_" + itemId;
+
+        if (localStorage.getItem(localKey)) {
+          showMessage("Ta wiadomość została już wcześniej zgłoszona jako spam.", "warning");
+          return;
+        }
+
+        const data = {
+          subject: item.subject || "(brak tematu)",
+          sender: item.from.emailAddress || item.from.displayName || "(nieznany nadawca)",
+          receivedTime: item.dateTimeCreated ? new Date(item.dateTimeCreated).toLocaleString() : "(nieznany czas)",
+          messageId: item.internetMessageId || "(brak ID)"
+        };
+
+        // Pobieramy treść wiadomości
+        if (item.body) {
+          item.body.getAsync(Office.CoercionType.Html, (resHtml) => {
+            if (resHtml.status === Office.AsyncResultStatus.Succeeded && resHtml.value) {
+              processBody(resHtml.value, true, data);
+            } else {
+              item.body.getAsync(Office.CoercionType.Text, (resText) => {
+                if (resText.status === Office.AsyncResultStatus.Succeeded) {
+                  processBody(resText.value, false, data);
+                } else {
+                  processBody("(nie udało się pobrać treści wiadomości)", false, data);
+                }
+              });
+            }
+          });
+        } else {
+          processBody("(treść wiadomości niedostępna)", false, data);
+        }
+
+        function processBody(content, isHtml, meta) {
+          let messageBody = content || "(pusta treść)";
+          if (isHtml) {
+            try {
+              const tempDiv = document.createElement('div');
+              tempDiv.innerHTML = messageBody;
+              messageBody = tempDiv.textContent || tempDiv.innerText || messageBody;
+            } catch (e) {
+              console.warn("Nie udało się oczyścić HTML:", e);
+            }
           }
 
-          // Pobieramy podstawowe dane
-          const data = {
-            subject: item.subject || "(brak tematu)",
-            sender: item.from ? (item.from.emailAddress || item.from.displayName) : "(nieznany nadawca)",
-            receivedTime: item.dateTimeCreated ? item.dateTimeCreated.toLocaleString() : "(nieznany czas)",
-            messageId: item.internetMessageId || "(brak ID)"
-          };
-          
-          // Sprawdzamy czy wiadomość była już zgłaszana
-          const wasReportedBefore = saveReportedMessage(data.messageId);
-          
-          if (wasReportedBefore) {
-            showMessage("Ta wiadomość została już wcześniej zgłoszona.");
-            loadingIndicator.style.display = "none";
-            return;
+          if (messageBody.length > 3000) {
+            messageBody = messageBody.substring(0, 2997) + "...";
           }
-          
-          // Próbujemy pobrać treść wiadomości - najpierw w HTML, jeśli się nie uda to w plain text
-          if (Office.context.mailbox.item.body) {
-            // Najpierw próbujemy pobrać jako HTML (większe szanse na sukces w niektórych wersjach)
-            Office.context.mailbox.item.body.getAsync(Office.CoercionType.Html, function(resultHtml) {
-              if (resultHtml.status === Office.AsyncResultStatus.Succeeded && resultHtml.value) {
-                // Udało się pobrać HTML
-                processBodyAndSendEmail(data, resultHtml.value, true);
-              } else {
-                // Jeśli nie udało się pobrać HTML, próbujemy text
-                Office.context.mailbox.item.body.getAsync(Office.CoercionType.Text, function(resultText) {
-                  if (resultText.status === Office.AsyncResultStatus.Succeeded) {
-                    processBodyAndSendEmail(data, resultText.value, false);
-                  } else {
-                    // Jeśli obie metody zawiodły, używamy pustej treści
-                    processBodyAndSendEmail(data, "(nie udało się pobrać treści wiadomości)", false);
-                  }
-                });
-              }
-            });
-          } else {
-            // Jeśli API body nie jest dostępne, kontynuujemy bez treści
-            processBodyAndSendEmail(data, "(treść wiadomości niedostępna w tej wersji Outlooka)", false);
-          }
-          
-        } catch (error) {
-          showMessage("Wystąpił błąd: " + (error.message || "nieznany błąd"));
-          loadingIndicator.style.display = "none";
-        }
-      });
-      
-      // Funkcja przetwarzająca treść i wysyłająca email
-      function processBodyAndSendEmail(data, bodyContent, isHtml) {
-        let messageBody = bodyContent || "(pusta treść)";
-        
-        // Jeśli treść jest w HTML, próbujemy usunąć znaczniki HTML, by był czytelniejszy
-        if (isHtml) {
-          try {
-            // Usuwamy niepotrzebne znaczniki HTML poprzez tymczasowy element div
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = messageBody;
-            messageBody = tempDiv.textContent || tempDiv.innerText || messageBody;
-          } catch (e) {
-            console.error("Błąd przy usuwaniu znaczników HTML:", e);
-          }
-        }
-        
-        // Ograniczamy długość treści aby uniknąć problemów z długimi wiadomościami
-        if (messageBody.length > 3000) {
-          messageBody = messageBody.substring(0, 2997) + "...";
-        }
-        
-        // Tworzymy treść zgłoszenia
-        const body = [
-          "Zgłoszenie spamu - szczegóły wiadomości:",
-          "",
-          `Temat: ${data.subject}`,
-          `Nadawca: ${data.sender}`,
-          `Data otrzymania: ${data.receivedTime}`,
-          `ID wiadomości: ${data.messageId}`,
-          "",
-          "--- Treść podejrzanej wiadomości ---",
-          messageBody,
-          "",
-          "--- Koniec treści podejrzanej wiadomości ---",
-          "",
-          "Prosimy o analizę tej wiadomości pod kątem zagrożeń bezpieczeństwa."
-        ].join("\n");
-        
-        // Tworzymy i otwieramy mailto link
-        try {
-          const encodedSubject = encodeURIComponent("SPAM: " + data.subject);
-          const encodedBody = encodeURIComponent(body);
-          
-          // Sprawdzamy długość wygenerowanego linku - mailto ma limit długości
+
+          const reportText = [
+            "Zgłoszenie spamu — szczegóły wiadomości:",
+            "",
+            `Temat: ${meta.subject}`,
+            `Nadawca: ${meta.sender}`,
+            `Data otrzymania: ${meta.receivedTime}`,
+            `Message-ID: ${meta.messageId}`,
+            "",
+            "--- Treść wiadomości ---",
+            messageBody,
+            "--- Koniec treści ---",
+            "",
+            "Prosimy o analizę tej wiadomości pod kątem zagrożeń bezpieczeństwa."
+          ].join("\n");
+
+          const encodedSubject = encodeURIComponent("SPAM: " + meta.subject);
+          const encodedBody = encodeURIComponent(reportText);
           const mailtoLink = `mailto:tomaszciszewski01@gmail.com?subject=${encodedSubject}&body=${encodedBody}`;
-          
+
+          // fallback jeśli link za długi
           if (mailtoLink.length > 2000) {
-            // Jeśli link jest zbyt długi, musimy go skrócić
-            const shorterBody = [
-              "Zgłoszenie spamu - szczegóły wiadomości:",
+            const shorterBody = encodeURIComponent([
+              `Temat: ${meta.subject}`,
+              `Nadawca: ${meta.sender}`,
+              `Data otrzymania: ${meta.receivedTime}`,
+              `Message-ID: ${meta.messageId}`,
               "",
-              `Temat: ${data.subject}`,
-              `Nadawca: ${data.sender}`,
-              `Data otrzymania: ${data.receivedTime}`,
-              `ID wiadomości: ${data.messageId}`,
-              "",
-              "Treść wiadomości była zbyt długa, aby ją dołączyć.",
+              "Treść była zbyt długa, aby ją dołączyć automatycznie.",
               "",
               "Prosimy o analizę tej wiadomości pod kątem zagrożeń bezpieczeństwa."
-            ].join("\n");
-            
-            const shorterMailtoLink = `mailto:tomaszciszewski01@gmail.com?subject=${encodedSubject}&body=${encodeURIComponent(shorterBody)}`;
-            window.location.href = shorterMailtoLink;
+            ].join("\n"));
+
+            window.location.href = `mailto:tomaszciszewski01@gmail.com?subject=${encodedSubject}&body=${shorterBody}`;
           } else {
             window.location.href = mailtoLink;
           }
-          
-          showMessage("Otworzono nową wiadomość do działu bezpieczeństwa.");
-        } catch (e) {
-          showMessage("Wystąpił błąd przy tworzeniu wiadomości: " + e.message);
-        }
-        
-        loadingIndicator.style.display = "none";
-      }
-    });
 
-    function showMessage(msg) {
-      const div = document.getElementById("resultMessage");
-      div.textContent = msg;
-      div.style.color = msg.includes("błąd") ? "#d83b01" : 
-                        msg.includes("już wcześniej zgłoszona") ? "#f2c811" : "#107c10";
-    }
+          localStorage.setItem(localKey, "1");
+          showMessage("Wiadomość została przekazana do zespołu bezpieczeństwa.", "info");
+        }
+      });
+    });
   </script>
 </body>
 </html>
