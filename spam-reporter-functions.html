@@ -151,46 +151,19 @@
             return xml;
         }
         
-        // Funkcja przenosząca wiadomość do kosza
-        function moveToTrash() {
+        // Funkcja alternatywna dla wysyłania wiadomości
+        function fallbackSendMethod(emailDetails) {
             try {
-                // Używamy EWS do przeniesienia wiadomości do kosza
-                Office.context.mailbox.makeEwsRequestAsync(
-                    getEwsMoveToTrashXml(Office.context.mailbox.item.itemId),
-                    function(asyncResult) {
-                        if (asyncResult.status !== Office.AsyncResultStatus.Succeeded) {
-                            console.error("Nie udało się przenieść wiadomości do kosza");
-                        }
-                    }
-                );
-            } catch (error) {
-                console.error("Błąd podczas przenoszenia do kosza:", error);
-            }
-        }
-        
-        // Funkcja tworząca żądanie SOAP dla EWS w celu przeniesienia wiadomości do kosza
-        function getEwsMoveToTrashXml(itemId) {
-            var xml = '<?xml version="1.0" encoding="utf-8"?>' +
-                '<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ' +
-                'xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages" ' +
-                'xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types" ' +
-                'xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">' +
-                '  <soap:Header>' +
-                '    <t:RequestServerVersion Version="Exchange2013" />' +
-                '  </soap:Header>' +
-                '  <soap:Body>' +
-                '    <m:MoveItem>' +
-                '      <m:ToFolderId>' +
-                '        <t:DistinguishedFolderId Id="deleteditems"/>' +
-                '      </m:ToFolderId>' +
-                '      <m:ItemIds>' +
-                '        <t:ItemId Id="' + itemId + '"/>' +
-                '      </m:ItemIds>' +
-                '    </m:MoveItem>' +
-                '  </soap:Body>' +
-                '</soap:Envelope>';
+                // Użyj displayNewMessageForm jako alternatywnej metody
+                Office.context.mailbox.displayNewMessageForm(emailDetails);
                 
-            return xml;
+                // Wyświetl informację, że użytkownik musi ręcznie zatwierdzić
+                showNotification("Proszę kliknąć 'Wyślij' aby zakończyć zgłaszanie spamu");
+                document.getElementById("manualConfirmation").style.display = "block";
+            } catch (error) {
+                document.getElementById("error").textContent = "Nie udało się utworzyć zgłoszenia: " + error.message;
+                document.getElementById("error").style.display = "block";
+            }
         }
         
         // Pomocnicza funkcja do wyświetlania powiadomień
@@ -255,7 +228,10 @@
 <body>
     <h1>Zgłaszanie Spamu</h1>
     <div id="confirmation" class="message confirmation">
-        Wiadomość została zgłoszona jako spam. Dziękujemy za pomoc w utrzymaniu bezpieczeństwa!
+        Wiadomość została zgłoszona jako spam i przeniesiona do kosza. Dziękujemy za pomoc w utrzymaniu bezpieczeństwa!
+    </div>
+    <div id="partialConfirmation" class="message confirmation">
+        Wiadomość została zgłoszona jako spam, ale nie udało się jej przenieść do kosza. Dziękujemy za pomoc!
     </div>
     <div id="manualConfirmation" class="message warning">
         Proszę kliknąć 'Wyślij' aby zakończyć zgłaszanie spamu.
