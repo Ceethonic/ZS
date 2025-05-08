@@ -43,10 +43,21 @@
       document.getElementById("reportBtn").addEventListener("click", () => {
         const item = Office.context.mailbox.item;
 
-        if (!item || !item.subject || !item.from) {
+        if (!item || !item.subject || !item.from || !item.itemId) {
           showMessage("Nie można pobrać szczegółów wiadomości.");
           return;
         }
+
+        const itemId = item.itemId;
+        const localKey = "reported_" + itemId;
+
+        if (localStorage.getItem(localKey)) {
+          showMessage("Ta wiadomość została już zgłoszona jako spam.");
+          return;
+        }
+
+        // zapisz, że wiadomość została zgłoszona
+        localStorage.setItem(localKey, "1");
 
         const subject = encodeURIComponent("SPAM: " + item.subject);
         const from = item.from.emailAddress || item.from.displayName;
