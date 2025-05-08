@@ -1,315 +1,100 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Zgłoś Spam</title>
-    
-    <!-- Office JS API -->
     <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
-    
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 20px;
-            color: #333;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            text-align: center;
-        }
-        h1 {
-            font-size: 24px;
-            margin-bottom: 20px;
-        }
-        p {
-            font-size: 16px;
-            line-height: 1.5;
-            margin-bottom: 20px;
+            margin: 0; padding: 20px; color: #333; text-align: center;
         }
         .button {
-            background-color: #0078d4;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            border-radius: 4px;
+            background-color: #0078d4; color: white; border: none;
+            padding: 10px 20px; font-size: 16px; cursor: pointer; border-radius: 4px;
         }
-        .button:hover {
-            background-color: #005a9e;
-        }
-        .error {
-            color: red;
-            font-weight: bold;
-            display: none;
-        }
-        .success {
-            color: green;
-            font-weight: bold;
-            display: none;
-        }
+        .button:hover { background-color: #005a9e; }
+        .error, .success { display: none; font-weight: bold; }
+        .error { color: red; }
+        .success { color: green; }
     </style>
-    
-    <script type="text/javascript">
-        // Inicjalizacja Office JS
-        Office.onReady(function(info) {
-            // Pokazujemy zawartość dla wszystkich platform
+</head>
+<body>
+    <div id="mainContent">
+        <h1>Zgłoś Spam</h1>
+        <p id="platformSpecificText">Ta wtyczka pozwala zgłosić bieżącą wiadomość jako spam do działu bezpieczeństwa.</p>
+        <p>Zgłoszenie zostanie przesłane wraz z kopią oryginalnej wiadomości.</p>
+        <button class="button" onclick="reportSpam()">Zgłoś jako spam</button>
+        <p class="success" id="successMessage"></p>
+        <p class="error" id="errorMessage"></p>
+    </div>
+
+    <script>
+        Office.onReady(() => {
             document.getElementById("mainContent").style.display = "block";
-            
-            // Sprawdzamy czy jesteśmy na mobilnej platformie, aby dostosować UI
-            var isMobile = false;
-            
-            if (Office.context.diagnostics && Office.context.diagnostics.platform) {
-                var platform = Office.context.diagnostics.platform.toLowerCase();
-                isMobile = platform === "ios" || platform === "android";
-            } else if (Office.context.mailbox && Office.context.mailbox.diagnostics) {
-                var hostName = Office.context.mailbox.diagnostics.hostName;
-                isMobile = hostName === "Outlook_iOS" || hostName === "Outlook_Android";
-            }
-            
-            // Dostosowujemy tekst dla urządzeń mobilnych
-            if (isMobile) {
-                document.getElementById("platformSpecificText").textContent = 
-                    "Ta wtyczka pozwala zgłosić bieżącą wiadomość jako spam bezpośrednio z urządzenia mobilnego.";
-            } else {
-                document.getElementById("platformSpecificText").textContent = 
-                    "Ta wtyczka pozwala zgłosić bieżącą wiadomość jako spam do działu bezpieczeństwa.";
-            }
         });
-        
-        // Funkcja uruchamiana po kliknięciu przycisku
-        function reportCurrentMessage() {
-            try {
-                if (Office.context.mailbox && Office.context.mailbox.item) {
-                    checkIfReported();
-                } else {
-                    showNotification("Nie można uzyskać dostępu do wiadomości.", "error");
-                }
-            } catch (error) {
-                showNotification("Błąd: " + error.message, "error");
+
+        function reportSpam() {
+            const itemId = Office.context.mailbox.item.itemId;
+
+            // Sprawdź, czy wiadomość została już zgłoszona
+            if (localStorage.getItem(itemId)) {
+                showNotification("Ta wiadomość została już zgłoszona.");
+                moveToDeletedItems(itemId);
+                return;
             }
-        }
-        
-        // Sprawdzenie, czy wiadomość była już zgłoszona
-        function checkIfReported() {
-            Office.context.mailbox.item.getItemIdAsync(function(result) {
-                if (result.status === Office.AsyncResultStatus.Succeeded) {
-                    var itemId = result.value;
-                    Office.context.mailbox.getCallbackTokenAsync({ isRest: true }, function(tokenResult) {
-                        if (tokenResult.status === Office.AsyncResultStatus.Succeeded) {
-                            var accessToken = tokenResult.value;
-                            var restId = Office.context.mailbox.convertToRestId(itemId, Office.MailboxEnums.RestVersion.v2_0);
-                            var userEmail = Office.context.mailbox.userProfile.emailAddress;
-                            var apiUrl = Office.context.mailbox.restUrl + "/v2.0/me/messages/" + restId;
-                            
-                            // Pobierz niestandardowe właściwości wiadomości
-                            fetch(apiUrl + "?$select=SingleValueExtendedProperties", {
-                                headers: {
-                                    "Authorization": "Bearer " + accessToken,
-                                    "Content-Type": "application/json"
-                                }
-                            })
-                            .then(response => response.json())
-                            .then(data => {
-                                var reportedBy = null;
-                                if (data.SingleValueExtendedProperties) {
-                                    var prop = data.SingleValueExtendedProperties.find(p => 
-                                        p.PropertyId === "String {00020386-0000-0000-C000-000000000046} Name ReportedBy"
-                                    );
-                                    if (prop) {
-                                        reportedBy = prop.Value;
-                                    }
-                                }
-                                
-                                if (reportedBy && reportedBy.includes(userEmail)) {
-                                    showNotification("Ta wiadomość została już zgłoszona przez Ciebie.", "error");
-                                } else {
-                                    reportSpam(itemId, restId, accessToken);
-                                }
-                            })
-                            .catch(error => {
-                                showNotification("Błąd podczas sprawdzania statusu zgłoszenia: " + error.message, "error");
-                            });
-                        } else {
-                            showNotification("Nie można uzyskać tokena dostępu.", "error");
-                        }
-                    });
-                } else {
-                    showNotification("Nie można uzyskać ID wiadomości.", "error");
-                }
-            });
-        }
-        
-        // Funkcja zgłaszania spamu
-        function reportSpam(itemId, restId, accessToken) {
-            try {
-                var userEmail = Office.context.mailbox.userProfile.emailAddress;
-                var subject = "SPAM ALERT: " + Office.context.mailbox.item.subject;
-                var body = "Użytkownik " + userEmail + 
-                          " oznaczył tę wiadomość jako spam. Prosimy o zablokowanie nadawcy w systemie bezpieczeństwa poczty.";
-                
-                // Przygotowanie wiadomości do wysłania przez REST API
-                var message = {
-                    Subject: subject,
-                    Body: {
-                        ContentType: "HTML",
-                        Content: body
-                    },
-                    ToRecipients: [{ EmailAddress: { Address: "tomaszciszewski01@gmail.com" } }],
-                    SingleValueExtendedProperties: [{
-                        PropertyId: "String {00020386-0000-0000-C000-000000000046} Name ReportedBy",
-                        Value: userEmail
-                    }]
-                };
-                
-                // Wysłanie wiadomości przez REST API
-                fetch(Office.context.mailbox.restUrl + "/v2.0/me/sendmail", {
-                    method: "POST",
-                    headers: {
-                        "Authorization": "Bearer " + accessToken,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({ Message: message, SaveToSentItems: true })
-                })
-                .then(response => {
-                    if (response.ok) {
-                        // Oznacz wiadomość jako zgłoszoną
-                        markMessageAsReported(restId, accessToken, userEmail);
-                        // Przenieś wiadomość do folderu Spam
-                        moveToJunkFolder(restId, accessToken);
-                        showNotification("Wiadomość została zgłoszona jako spam i przeniesiona do folderu Spam.", "success");
+
+            Office.context.mailbox.item.getItemIdAsync((asyncResult) => {
+                const id = asyncResult.value;
+                const request = `
+                    <CreateItem MessageDisposition="SendAndSaveCopy">
+                        <SavedItemFolderId><DistinguishedFolderId Id="sentitems"/></SavedItemFolderId>
+                        <Items>
+                            <Message>
+                                <Subject>SPAM ALERT: ${Office.context.mailbox.item.subject}</Subject>
+                                <Body BodyType="HTML">
+                                    Użytkownik ${Office.context.mailbox.userProfile.emailAddress} oznaczył tę wiadomość jako spam. Prosimy o zablokowanie nadawcy.
+                                </Body>
+                                <ToRecipients>
+                                    <Mailbox><EmailAddress>tomaszciszewski01@gmail.com</EmailAddress></Mailbox>
+                                </ToRecipients>
+                                <Attachments>
+                                    <ItemAttachment><Name>original_spam_message.eml</Name><ItemId Id="${id}"/></ItemAttachment>
+                                </Attachments>
+                            </Message>
+                        </Items>
+                    </CreateItem>`;
+
+                Office.context.mailbox.makeEwsRequestAsync(request, (result) => {
+                    if (result.status === Office.AsyncResultStatus.Succeeded) {
+                        localStorage.setItem(itemId, true);
+                        showNotification("Wiadomość została zgłoszona jako spam.");
+                        moveToDeletedItems(itemId);
                     } else {
-                        throw new Error("Błąd podczas wysyłania zgłoszenia.");
+                        showNotification("Błąd: " + result.error.message, true);
                     }
-                })
-                .catch(error => {
-                    showNotification("Błąd: " + error.message, "error");
                 });
-            } catch (error) {
-                showNotification("Błąd: " + error.message, "error");
-            }
-        }
-        
-        // Oznaczenie wiadomości jako zgłoszonej
-        function markMessageAsReported(restId, accessToken, userEmail) {
-            fetch(Office.context.mailbox.restUrl + "/v2.0/me/messages/" + restId, {
-                method: "PATCH",
-                headers: {
-                    "Authorization": "Bearer " + accessToken,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    SingleValueExtendedProperties: [{
-                        PropertyId: "String {00020386-0000-0000-C000-000000000046} Name ReportedBy",
-                        Value: userEmail
-                    }]
-                })
-            })
-            .catch(error => {
-                console.error("Błąd podczas oznaczania wiadomości:", error);
             });
         }
-        
-        // Przeniesienie wiadomości do folderu Spam
-        function moveToJunkFolder(restId, accessToken) {
-            fetch(Office.context.mailbox.restUrl + "/v2.0/me/messages/" + restId + "/move", {
-                method: "POST",
-                headers: {
-                    "Authorization": "Bearer " + accessToken,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    DestinationId: "JunkEmail"
-                })
-            })
-            .catch(error => {
-                showNotification("Błąd podczas przenoszenia wiadomości do folderu Spam: " + error.message, "error");
-            });
+
+        function moveToDeletedItems(itemId) {
+            const request = `
+                <MoveItem>
+                    <ToFolderId><DistinguishedFolderId Id="deleteditems"/></ToFolderId>
+                    <ItemIds><ItemId Id="${itemId}"/></ItemIds>
+                </MoveItem>`;
+            Office.context.mailbox.makeEwsRequestAsync(request);
         }
-        
-        // Pomocnicza funkcja do wyświetlania powiadomień
-        function showNotification(message, type) {
-            try {
-                var elementId = type === "error" ? "errorMessage" : "successMessage";
-                var element = document.getElementById(elementId);
-                element.textContent = message;
-                element.style.display = "block";
-                
-                // Ukryj po 5 sekundach
-                setTimeout(function() {
-                    element.style.display = "none";
-                }, 5000);
-                
-                // Próba użycia natywnych powiadomień Outlook
-                if (Office.context.mailbox && Office.context.mailbox.item && 
-                    Office.context.mailbox.item.notificationMessages) {
-                    Office.context.mailbox.item.notificationMessages.addAsync("spamReportNotification", {
-                        type: type === "error" ? "errorMessage" : "informationalMessage",
-                        message: message,
-                        icon: "icon-16",
-                        persistent: false
-                    });
-                }
-            } catch (error) {
-                alert(message);
-            }
+
+        function showNotification(message, isError = false) {
+            const elemId = isError ? "errorMessage" : "successMessage";
+            const elem = document.getElementById(elemId);
+            elem.textContent = message;
+            elem.style.display = "block";
+            setTimeout(() => elem.style.display = "none", 3000);
         }
     </script>
-</head>
-
-<body>
-    <div class="container">
-        <div id="mainContent" style="display: none;">
-            <h1>Zgłoś Spam</h1>
-            <p id="platformSpecificText">Ta wtyczka pozwala zgłosić bieżącą wiadomość jako spam do działu bezpieczeństwa.</p>
-            <p>Zgłoszenie zostanie przesłane do działu bezpieczeństwa wraz z kopią oryginalnej wiadomości.</p>
-            <button class="button" onclick="reportCurrentMessage()">Zgłoś jako spam</button>
-            <p class="success" id="successMessage"></p>
-            <p class="error" id="errorMessage"></p>
-        </div>
-    </div>
 </body>
 </html>
