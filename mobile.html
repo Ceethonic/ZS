@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Zgłoś Spam (Mobile)</title>
+  <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; padding: 20px; background: #f4f6f8; color: #333; text-align: center; }
+    button { background: #0078d4; color: white; border: none; padding: 12px 24px; font-size: 16px; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #005a9e; }
+    .message { margin-top: 20px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Zgłoś Spam (Mobile)</h1>
+  <p>Otworzy się nowy mail z podejrzaną treścią.</p>
+  <button id="reportBtn">Zgłoś jako spam</button>
+  <div class="message" id="resultMessage"></div>
+
+  <script>
+    function showMessage(msg, success = true) {
+      const div = document.getElementById("resultMessage");
+      div.textContent = msg;
+      div.style.color = success ? "#107c10" : "#d83b01";
+    }
+
+    Office.onReady(() => {
+      document.getElementById("reportBtn").addEventListener("click", () => {
+        const item = Office.context.mailbox.item;
+        if (!item) return showMessage("Nie można pobrać wiadomości.", false);
+
+        item.body.getAsync(Office.CoercionType.Html, function(resultHtml) {
+          let text = "(brak treści)", links = [];
+          if (resultHtml.status === Office.AsyncResultStatus.Succeeded && resultHtml.value) {
+            const tempDiv = document.createElement("div");
+            tempDiv.innerHTML = resultHtml.value;
+            text = tempDiv.textContent || tempDiv.innerText || resultHtml.value;
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(resultHtml.value, 'text/html');
+            const anchors = doc.querySelectorAll('a[href]');
+            anchors.forEach(a => {
+              const href = a.getAttribute('href');
+              if (href && !links.includes(href)) links.push(href);
+            });
+          }
+
+          const lines = [
+            "Zgłoszenie spamu - szczegóły wiadomości:",
+            `Temat: ${item.subject || "(brak tematu)"}`,
+            `Nadawca: ${item.from?.emailAddress || "(nieznany nadawca)"}`,
+            "",
+            "--- Treść wiadomości ---",
+            text.length > 3000 ? text.substring(0, 3000) + "..." : text,
+            "--- Koniec treści ---",
+            "",
+            links.length > 0 ? "Linki:" : "Brak linków.",
+            ...links.map(l => "- " + l)
+          ];
+
+          const subject = encodeURIComponent("SPAM: " + (item.subject || "(brak tematu)"));
+          const body = encodeURIComponent(lines.join("\n"));
+          const a = document.createElement("a");
+          a.href = `mailto:tomaszciszewski01@gmail.com?subject=${subject}&body=${body}`;
+          a.style.display = "none"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+
+          showMessage("Wiadomość została przygotowana.");
+        });
+      });
+    });
+  </script>
+</body>
+</html>
