@@ -235,10 +235,6 @@
                 Office.context.mailbox.makeEwsRequestAsync(moveToTrashXml, function(moveResult) {
                   if (moveResult.status === Office.AsyncResultStatus.Succeeded) {
                     showMessage("Wiadomość została zgłoszona jako spam i przeniesiona do kosza.", "info");
-                    // Zamykamy okno dialogowe wtyczki po krótkim opóźnieniu
-                    setTimeout(function() {
-                      Office.context.ui.closeContainer();
-                    }, 2000);
                   } else {
                     // Przynajmniej wiadomość została wysłana, nawet jeśli przeniesienie do kosza nie zadziałało
                     showMessage("Wiadomość została zgłoszona jako spam, ale nie udało się przenieść jej do kosza.", "warning");
@@ -279,19 +275,14 @@
             Office.context.mailbox.item.move.to.deleteditems.executeAsync(
               function(result) {
                 if (result.status === Office.AsyncResultStatus.Succeeded) {
-                  showMessage("Wiadomość została zgłoszona jako spam. Oryginał przeniesiony do kosza.", "info");
-                  // Zamykamy okno dialogowe wtyczki po krótkim opóźnieniu
-                  setTimeout(function() {
-                    Office.context.ui.closeContainer();
-                  }, 2000);
+                  showMessage("Wiadomość została przygotowana do wysłania. Oryginał przeniesiony do kosza.", "info");
                 } else {
-                  showMessage("Wiadomość została zgłoszona jako spam. Nie udało się przenieść oryginału do kosza.", "warning");
+                  showMessage("Wiadomość została przygotowana do wysłania. Nie udało się przenieść oryginału do kosza.", "warning");
                 }
               }
             );
           } else {
-            // W tym przypadku zostawiamy wtyczkę otwartą, aby użytkownik mógł przeczytać instrukcję
-            showMessage("Wiadomość została zgłoszona jako spam. Pamiętaj, aby ręcznie przenieść oryginał do kosza po wysłaniu.", "info");
+            showMessage("Wiadomość została przygotowana do wysłania. Przenieś oryginalną wiadomość do kosza ręcznie.", "info");
           }
           
           loading.style.display = "none";
