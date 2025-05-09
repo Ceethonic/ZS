@@ -102,7 +102,7 @@
 <div style="text-align: right; margin-bottom: 10px;">
 <a href="spam-reporter-index.html"><img alt="PL" src="https://flagcdn.com/pl.svg" style="margin-right: 6px; vertical-align: middle;" width="24"/></a>
 <a href="spam-reporter-indexENG.html"><img alt="EN" src="https://flagcdn.com/gb.svg" style="vertical-align: middle;" width="24"/></a>
-</div><div class="container"><div class="logo-container"><a href="https://ratels.pl" target="_blank"><img alt="Logo Ratels" src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg"/></a></div><h1>Zgłoszenie podejrzanej wiadomości</h1><p>Po kliknięciu przycisku zostanie przygotowana wiadomość z informacjami dla zespołu bezpieczeństwa oraz dodany załącznik z oryginalną wiadomością. Po wysłaniu zalecamy ręczne przeniesienie oryginalnej wiadomości do kosza.</p><button class="button" id="reportBtn">Zgłoś jako spam</button><div class="footer">
+</div><div class="container"><div class="logo-container"><a href="https://ratels.pl" target="_blank"><img alt="Logo Ratels" src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg"/></a></div><h1>Zgłoszenie podejrzanej wiadomości</h1><p>Po kliknięciu przycisku zostanie przygotowana wiadomość z informacjami dla zespołu bezpieczeństwa oraz dodany załącznik z oryginalną wiadomością.</p><button class="button" id="reportBtn">Zgłoś jako spam</button><div class="footer">
 <p><a href="https://ratels.pl/polityka-prywatnosci/" target="_blank">Polityka prywatności</a></p>
 </div></div>
 
@@ -172,22 +172,130 @@
           "Pełna wiadomość została dodana jako załącznik EML."
         ].join("\n");
 
-        // Utworzenie nowej wiadomości z załącznikiem (tryb ręczny)
-        Office.context.mailbox.displayNewMessageForm({
-          toRecipients: ['tomaszciszewski01@gmail.com'],
-          subject: "SPAM: " + data.subject,
-          htmlBody: reportBody.replace(/\n/g, "<br>") + "<br><br><strong>Po wysłaniu tej wiadomości zalecamy ręczne przeniesienie oryginalnej wiadomości do kosza.</strong>",
-          attachments: [
-            {
-              type: Office.MailboxEnums.AttachmentType.Item,
-              itemId: item.itemId,
-              name: "original_message.eml"
-            }
-          ]
-        });
-
-        showMessage("Wiadomość została przygotowana do wysłania z załącznikiem. Po wysłaniu przenieś oryginalną wiadomość do kosza.", "info");
-        loading.style.display = "none";
+        // Utworzenie nowej wiadomości z załącznikiem (w trybie API nadawania)
+        if (Office.context.mailbox.makeEwsRequestAsync) {
+          // Próba automatycznego wysłania wiadomości przez EWS
+          try {
+            // Najpierw tworzymy i wysyłamy wiadomość z załącznikiem
+            const ewsXml = `
+              <?xml version="1.0" encoding="utf-8"?>
+              <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                             xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                             xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+                             xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types"
+                             xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages">
+                <soap:Header>
+                  <t:RequestServerVersion Version="Exchange2013" />
+                </soap:Header>
+                <soap:Body>
+                  <m:CreateItem MessageDisposition="SendAndSaveCopy">
+                    <m:Items>
+                      <t:Message>
+                        <t:Subject>SPAM: ${data.subject.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</t:Subject>
+                        <t:Body BodyType="HTML">${reportBody.replace(/\n/g, "<br>").replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</t:Body>
+                        <t:ToRecipients>
+                          <t:Mailbox>
+                            <t:EmailAddress>tomaszciszewski01@gmail.com</t:EmailAddress>
+                          </t:Mailbox>
+                        </t:ToRecipients>
+                        <t:ReferenceItemId Id="${item.itemId}" />
+                      </t:Message>
+                    </m:Items>
+                  </m:CreateItem>
+                </soap:Body>
+              </soap:Envelope>
+            `;
+            
+            Office.context.mailbox.makeEwsRequestAsync(ewsXml, function(result) {
+              if (result.status === Office.AsyncResultStatus.Succeeded) {
+                // Następnie przenosimy oryginalną wiadomość do kosza
+                const moveToTrashXml = `
+                  <?xml version="1.0" encoding="utf-8"?>
+                  <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+                                 xmlns:xsd="http://www.w3.org/2001/XMLSchema" 
+                                 xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" 
+                                 xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types" 
+                                 xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages">
+                    <soap:Header>
+                      <t:RequestServerVersion Version="Exchange2013" />
+                    </soap:Header>
+                    <soap:Body>
+                      <m:MoveItem>
+                        <m:ToFolderId>
+                          <t:DistinguishedFolderId Id="deleteditems"/>
+                        </m:ToFolderId>
+                        <m:ItemIds>
+                          <t:ItemId Id="${item.itemId}"/>
+                        </m:ItemIds>
+                      </m:MoveItem>
+                    </soap:Body>
+                  </soap:Envelope>
+                `;
+                
+                Office.context.mailbox.makeEwsRequestAsync(moveToTrashXml, function(moveResult) {
+                  if (moveResult.status === Office.AsyncResultStatus.Succeeded) {
+                    showMessage("Wiadomość została zgłoszona jako spam i przeniesiona do kosza.", "info");
+                    // Zamykamy okno dialogowe wtyczki po krótkim opóźnieniu
+                    setTimeout(function() {
+                      Office.context.ui.closeContainer();
+                    }, 2000);
+                  } else {
+                    // Przynajmniej wiadomość została wysłana, nawet jeśli przeniesienie do kosza nie zadziałało
+                    showMessage("Wiadomość została zgłoszona jako spam, ale nie udało się przenieść jej do kosza.", "warning");
+                  }
+                  loading.style.display = "none";
+                });
+              } else {
+                // Jeśli automatyczne wysyłanie nie zadziałało, wracamy do ręcznego formularza
+                fallbackToManualSend();
+              }
+            });
+          } catch (e) {
+            console.error("Błąd podczas próby automatycznego wysłania:", e);
+            fallbackToManualSend();
+          }
+        } else {
+          // Brak dostępu do EWS, używamy standardowego formularza
+          fallbackToManualSend();
+        }
+        
+        function fallbackToManualSend() {
+          // Utworzenie formularza wiadomości (wymagającego ręcznego kliknięcia Wyślij)
+          Office.context.mailbox.displayNewMessageForm({
+            toRecipients: ['tomaszciszewski01@gmail.com'],
+            subject: "SPAM: " + data.subject,
+            htmlBody: reportBody.replace(/\n/g, "<br>"),
+            attachments: [
+              {
+                type: Office.MailboxEnums.AttachmentType.Item,
+                itemId: item.itemId,
+                name: "original_message.eml"
+              }
+            ]
+          });
+          
+          // Próba przeniesienia oryginału do kosza za pomocą standardowego API (dostępnego w nowszych wersjach)
+          if (Office.context.mailbox.item.move) {
+            Office.context.mailbox.item.move.to.deleteditems.executeAsync(
+              function(result) {
+                if (result.status === Office.AsyncResultStatus.Succeeded) {
+                  showMessage("Wiadomość została zgłoszona jako spam. Oryginał przeniesiony do kosza.", "info");
+                  // Zamykamy okno dialogowe wtyczki po krótkim opóźnieniu
+                  setTimeout(function() {
+                    Office.context.ui.closeContainer();
+                  }, 2000);
+                } else {
+                  showMessage("Wiadomość została zgłoszona jako spam. Nie udało się przenieść oryginału do kosza.", "warning");
+                }
+              }
+            );
+          } else {
+            // W tym przypadku zostawiamy wtyczkę otwartą, aby użytkownik mógł przeczytać instrukcję
+            showMessage("Wiadomość została zgłoszona jako spam. Pamiętaj, aby ręcznie przenieść oryginał do kosza po wysłaniu.", "info");
+          }
+          
+          loading.style.display = "none";
+        }
       });
     });
   </script>
