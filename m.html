@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zgłoś Spam | Ratels Security</title>
+  <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
+  <!-- Zaimportuj style z pliku CSS -->
+  <link href="styles.css" rel="stylesheet">
+</head>
+<body>
+  <div class="lang-switcher">
+    <a href="mobile.html" aria-label="Polski"><img alt="PL" src="https://flagcdn.com/pl.svg" style="margin-right: 6px; vertical-align: middle;" width="24"/></a>
+    <a href="mobileeng.html" aria-label="English"><img alt="EN" src="https://flagcdn.com/gb.svg" style="vertical-align: middle;" width="24"/></a>
+  </div>
+
+  <div class="container">
+    <div class="logo-container">
+      <a href="https://ratels.pl" target="_blank" aria-label="Strona główna Ratels">
+        <img src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg" alt="Logo Ratels">
+      </a>
+    </div>
+    <h1>Wykryto podejrzaną wiadomość?</h1>
+    <p>Kliknij przycisk poniżej, aby przygotować zgłoszenie dla zespołu bezpieczeństwa. System automatycznie zbierze informacje o wiadomości.</p>
+    <button class="button" id="reportBtn">Zgłoś jako spam</button>
+    
+    <div id="loadingIndicator" class="loading">Analizowanie wiadomości...</div>
+    <div id="resultMessage" class="message"></div>
+    
+    <div class="footer">
+      <p>© 2025 Ratels Security • <a href="https://ratels.pl/polityka-prywatnosci/" target="_blank">Polityka prywatności</a></p>
+    </div>
+  </div>
+
+  <script>
+    function showMessage(text, type = 'success') {
+      const div = document.getElementById("resultMessage");
+      div.textContent = text;
+      div.className = 'message ' + type;
+      div.classList.add('show');
+      
+      // Automatyczne ukrycie po 8 sekundach
+      setTimeout(() => {
+        div.classList.remove('show');
+      }, 8000);
+    }
+
+    function saveReportedMessage(messageId) {
+      try {
+        const reportedMessages = JSON.parse(localStorage.getItem('reportedSpamMessages') || '[]');
+        if (!reportedMessages.includes(messageId)) {
+          reportedMessages.push(messageId);
+          localStorage.setItem('reportedSpamMessages', JSON.stringify(reportedMessages));
+          return false;
+        }
+        return true;
+      } catch (e) {
+        console.error("Błąd historii zgłoszeń:", e);
+        return false;
+      }
+    }
+
+    Office.onReady(() => {
+      document.getElementById("reportBtn").addEventListener("click", () => {
+        const loading = document.getElementById("loadingIndicator");
+        loading.style.display = "block";
+        document.getElementById("reportBtn").disabled = true;
+
+        const item = Office.context.mailbox.item;
+        if (!item) {
+          showMessage("Nie można pobrać szczegółów wiadomości. Spróbuj ponownie.", "error");
+          loading.style.display = "none";
+          document.getElementById("reportBtn").disabled = false;
+          return;
+        }
+
+        const data = {
+          subject: item.subject || "(brak tematu)",
+          sender: item.from ? (item.from.emailAddress || item.from.displayName) : "(nieznany nadawca)",
+          receivedTime: item.dateTimeCreated ? new Date(item.dateTimeCreated).toLocaleString() : "(nieznany czas)",
+          messageId: item.internetMessageId || "(brak ID)"
+        };
+
+        if (saveReportedMessage(data.messageId)) {
+          showMessage("Ta wiadomość została już wcześniej zgłoszona.", "warning");
+          loading.style.display = "none";
+          document.getElementById("reportBtn").disabled = false;
+          return;
+        }
+
+        item.body.getAsync(Office.CoercionType.Html, function(resultHtml) {
+          let cleaned = "(brak treści)";
+          let links = [];
+
+          if (resultHtml.status === Office.AsyncResultStatus.Succeeded && resultHtml.value) {
+            const tempDiv = document.createElement("div");
+            tempDiv.innerHTML = resultHtml.value;
+            cleaned = tempDiv.textContent || tempDiv.innerText || resultHtml.value;
+            if (cleaned.length > 3000) {
+              cleaned = cleaned.substring(0, 2997) + "...";
+            }
+
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(resultHtml.value, 'text/html');
+            const anchors = doc.querySelectorAll('a[href]');
+            anchors.forEach(a => {
+              const href = a.getAttribute('href');
+              if (href && !links.includes(href)) links.push(href);
+            });
+          }
+
+          const reportBody = [
+            "<h2>Zgłoszenie wiadomości spam</h2>",
+            "<p>Poniżej znajdują się szczegóły zgłoszonej wiadomości:</p>",
+            "<table style='width:100%; border-collapse: collapse;'>",
+            `<tr><td style='padding:8px; border-bottom:1px solid #eee; font-weight:bold;'>Temat:</td><td style='padding:8px; border-bottom:1px solid #eee;'>${data.subject}</td></tr>`,
+            `<tr><td style='padding:8px; border-bottom:1px solid #eee; font-weight:bold;'>Nadawca:</td><td style='padding:8px; border-bottom:1px solid #eee;'>${data.sender}</td></tr>`,
+            `<tr><td style='padding:8px; border-bottom:1px solid #eee; font-weight:bold;'>Data otrzymania:</td><td style='padding:8px; border-bottom:1px solid #eee;'>${data.receivedTime}</td></tr>`,
+            "</table>",
+            "<h3>Treść wiadomości:</h3>",
+            `<pre style='background:#f5f5f5; padding:10px; font-size:13px; overflow-x:auto;'>${cleaned}</pre>`,
+            links.length > 0 ? "<h3>Wykryte linki:</h3>" : "",
+            links.length > 0 ? "<ul style='margin-top:5px;'>" + links.map(link => `<li style='word-break:break-all;'>${link}</li>`).join("") + "</ul>" : "",
+            "<p style='font-size:12px; color:#666;'>Dziękujemy za czujność i pomoc w utrzymaniu bezpieczeństwa naszej sieci.</p>"
+          ].join("");
+
+          const subjectEncoded = encodeURIComponent("SPAM: " + data.subject);
+          const bodyEncoded = encodeURIComponent(reportBody);
+          const host = Office.context.mailbox.diagnostics.hostName;
+
+          if (host === "OutlookIOS" || host === "OutlookAndroid") {
+            // Mobilne platformy - używamy linku mailto
+            const plainTextBody = [
+              "Zgłoszenie spamu - szczegóły wiadomości:",
+              "",
+              `Temat: ${data.subject}`,
+              `Nadawca: ${data.sender}`,
+              `Data otrzymania: ${data.receivedTime}`,
+              `ID wiadomości: ${data.messageId}`,
+              "",
+              "--- Treść wiadomości ---",
+              cleaned,
+              "--- Koniec treści ---",
+              "",
+              links.length > 0 ? "Wiadomość zawierała następujące linki:" : "Nie znaleziono linków w treści wiadomości.",
+              ...links.map(link => "- " + link),
+              "",
+              "Dziękujemy za pomoc w utrzymaniu bezpieczeństwa."
+            ].join("\n");
+
+            const bodyMailtoEncoded = encodeURIComponent(plainTextBody);
+            const a = document.createElement("a");
+            a.href = `mailto:security@ratels.pl?subject=${subjectEncoded}&body=${bodyMailtoEncoded}`;
+            a.style.display = "none";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          } else {
+            // Wersja desktopowa - używamy displayNewMessageForm
+            Office.context.mailbox.displayNewMessageForm({
+              toRecipients: ["security@ratels.pl"],
+              subject: "SPAM: " + data.subject,
+              htmlBody: reportBody
+            });
+          }
+
+          showMessage("Zgłoszenie zostało przygotowane. Wyślij wiadomość, aby zakończyć proces.", "success");
+          loading.style.display = "none";
+          document.getElementById("reportBtn").disabled = false;
+
+          // Zamknij panel po krótkim opóźnieniu
+          setTimeout(() => {
+            if (Office.context.ui && Office.context.ui.closeContainer) {
+              Office.context.ui.closeContainer();
+            }
+          }, 4000);
+        });
+      });
+    });
+  </script>
+</body>
+</html>
