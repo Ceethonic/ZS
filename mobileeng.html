@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zgłoś Spam - Mobilne</title>
+  <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background-color: #f4f6f8;
+      color: #333;
+    }
+    .container {
+      max-width: 560px;
+      margin: 0 auto;
+      background-color: #fff;
+      padding: 32px 24px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+      text-align: center;
+    }
+    .logo-container {
+      background-color: #1a1a1a;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+    .logo-container img {
+      max-width: 180px;
+      height: auto;
+    }
+    h1 {
+      font-size: 22px;
+      color: #2f4f6f;
+      margin-bottom: 12px;
+    }
+    p {
+      font-size: 15px;
+      margin-bottom: 24px;
+    }
+    .button {
+      background-color: #0078d4;
+      color: #fff;
+      border: none;
+      padding: 12px 28px;
+      font-size: 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    .button:hover {
+      background-color: #005a9e;
+    }
+    .button:active {
+      background-color: #004578;
+    }
+    .message {
+      margin-top: 24px;
+      font-weight: 500;
+      padding: 0 15px;
+      font-size: 14px;
+    }
+    .loading {
+      display: none;
+      margin-top: 20px;
+      font-style: italic;
+      color: #888;
+    }
+    .footer {
+      margin-top: 32px;
+      font-size: 13px;
+      color: #666;
+    }
+    .footer a {
+      color: #0078d4;
+      text-decoration: none;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div style="text-align: right; margin-bottom: 10px;">
+    <a href="spam-reporter-index.html">
+      <img src="https://flagcdn.com/pl.svg" alt="PL" width="24" style="margin-right: 6px; vertical-align: middle;">
+    </a>
+    <a href="spam-reporter-indexENG.html">
+      <img src="https://flagcdn.com/gb.svg" alt="EN" width="24" style="vertical-align: middle;">
+    </a>
+  </div>
+  <div class="container">
+    <div class="logo-container">
+      <a href="https://ratels.pl" target="_blank">
+        <img src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg" alt="Ratels Logo">
+      </a>
+    </div>
+    <h1>Zgłoszenie podejrzanej wiadomości</h1>
+    <p>Po kliknięciu przycisku zostanie przygotowana wiadomość z informacjami dla zespołu bezpieczeństwa.</p>
+    <button class="button" id="reportBtn">Zgłoś jako spam</button>
+    <div class="loading" id="loadingIndicator">Zbieranie danych...</div>
+    <div class="message" id="resultMessage"></div>
+    <div class="footer">
+      <p><a href="https://ratels.pl/polityka-prywatnosci/" target="_blank">Polityka prywatności Mobilne</a></p>
+    </div>
+  </div>
+
+  <script>
+    function showMessage(msg) {
+      const div = document.getElementById("resultMessage");
+      div.textContent = msg;
+      div.style.color = msg.includes("błąd") ? "#d83b01" :
+                        msg.includes("już wcześniej zgłoszona") ? "#f2c811" : "#107c10";
+    }
+
+    function saveReportedMessage(messageId) {
+      try {
+        const reportedMessages = JSON.parse(localStorage.getItem('reportedSpamMessages') || '[]');
+        if (!reportedMessages.includes(messageId)) {
+          reportedMessages.push(messageId);
+          localStorage.setItem('reportedSpamMessages', JSON.stringify(reportedMessages));
+          return false;
+        }
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    Office.onReady(() => {
+      document.getElementById("reportBtn").addEventListener("click", () => {
+        const loading = document.getElementById("loadingIndicator");
+        loading.style.display = "block";
+
+        const item = Office.context.mailbox.item;
+        if (!item) {
+          showMessage("Nie można pobrać szczegółów wiadomości.");
+          loading.style.display = "none";
+          return;
+        }
+
+        const data = {
+          subject: item.subject || "(brak tematu)",
+          sender: item.from ? (item.from.emailAddress || item.from.displayName) : "(nieznany nadawca)",
+          receivedTime: item.dateTimeCreated ? new Date(item.dateTimeCreated).toLocaleString() : "(nieznany czas)",
+          messageId: item.internetMessageId || "(brak ID)"
+        };
+
+        if (saveReportedMessage(data.messageId)) {
+          showMessage("Ta wiadomość została już wcześniej zgłoszona.");
+          loading.style.display = "none";
+          return;
+        }
+
+        item.body.getAsync(Office.CoercionType.Html, function(resultHtml) {
+          let cleaned = "(brak treści)";
+          let links = [];
+
+          if (resultHtml.status === Office.AsyncResultStatus.Succeeded && resultHtml.value) {
+            const tempDiv = document.createElement("div");
+            tempDiv.innerHTML = resultHtml.value;
+            cleaned = tempDiv.textContent || tempDiv.innerText || resultHtml.value;
+            if (cleaned.length > 3000) {
+              cleaned = cleaned.substring(0, 2997) + "...";
+            }
+
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(resultHtml.value, 'text/html');
+            const anchors = doc.querySelectorAll('a[href]');
+            anchors.forEach(a => {
+              const href = a.getAttribute('href');
+              if (href && !links.includes(href)) links.push(href);
+            });
+          }
+
+          const reportBody = [
+            "Zgłoszenie spamu - szczegóły wiadomości:",
+            "",
+            `Temat: ${data.subject}`,
+            `Nadawca: ${data.sender}`,
+            `Data otrzymania: ${data.receivedTime}`,
+            `ID wiadomości: ${data.messageId}`,
+            "",
+            "--- Treść wiadomości ---",
+            cleaned,
+            "--- Koniec treści ---",
+            "",
+            links.length > 0 ? "Wiadomość zawierała następujące linki:" : "Nie znaleziono linków w treści wiadomości.",
+            ...links.map(link => "- " + link),
+            "",
+            "Prosze o zablokowanie wiadomości"
+          ].join("\n");
+
+          const subjectEncoded = encodeURIComponent("SPAM: " + data.subject);
+          const bodyEncoded = encodeURIComponent(reportBody);
+          const host = Office.context.mailbox.diagnostics.hostName;
+
+          if (host === "OutlookIOS" || host === "OutlookAndroid") {
+            const a = document.createElement("a");
+            a.href = `mailto:tomaszciszewski01@gmail.com?subject=${subjectEncoded}&body=${bodyEncoded}`;
+            a.style.display = "none";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          } else {
+            // Encode as HTML to preserve formatting
+            const safeHtml = `<pre>${reportBody.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>`;
+            Office.context.mailbox.displayNewMessageForm({
+              toRecipients: ["tomaszciszewski01@gmail.com"],
+              subject: "SPAM: " + data.subject,
+              htmlBody: safeHtml
+            });
+          }
+
+          showMessage("Otworzono wiadomość z gotowym zgłoszeniem.");
+          loading.style.display = "none";
+        });
+      });
+    });
+  </script>
+</body>
+</html>
