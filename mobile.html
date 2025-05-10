@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Zgłoś Spam | Ratels Security</title>
   <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
+  <!-- Zaimportuj style z pliku CSS -->
   <link href="styles.css" rel="stylesheet">
 </head>
 <body>
@@ -37,7 +38,11 @@
       div.textContent = text;
       div.className = 'message ' + type;
       div.classList.add('show');
-      setTimeout(() => div.classList.remove('show'), 8000);
+      
+      // Automatyczne ukrycie po 8 sekundach
+      setTimeout(() => {
+        div.classList.remove('show');
+      }, 8000);
     }
 
     function saveReportedMessage(messageId) {
@@ -53,6 +58,86 @@
         console.error("Błąd historii zgłoszeń:", e);
         return false;
       }
+    }
+
+    // Funkcja do przekierowania na URL mailto
+    function openMailtoUrl(url) {
+      const a = document.createElement("a");
+      a.href = url;
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    // Funkcja do obsługi wersji Android
+    function handleAndroidReport(data, cleaned, links) {
+      console.log("Używanie metody dla Androida");
+      
+      // Przygotowujemy prostszy format treści dla Androida
+      const plainTextBody = [
+        "Zgłoszenie spamu - szczegóły wiadomości:",
+        "",
+        `Temat: ${data.subject}`,
+        `Nadawca: ${data.sender}`,
+        `Data otrzymania: ${data.receivedTime}`,
+        `ID wiadomości: ${data.messageId}`,
+        "",
+        "--- Treść wiadomości ---",
+        cleaned,
+        "--- Koniec treści ---",
+        "",
+        links.length > 0 ? "Wiadomość zawierała następujące linki:" : "Nie znaleziono linków w treści wiadomości.",
+        ...links.map(link => "- " + link),
+        "",
+        "Dziękujemy za pomoc w utrzymaniu bezpieczeństwa."
+      ].join("\n");
+
+      const subjectEncoded = encodeURIComponent("SPAM: " + data.subject);
+      const bodyMailtoEncoded = encodeURIComponent(plainTextBody);
+      
+      // Na Androidzie używamy bezpośredniego otwierania URL
+      window.location.href = `mailto:tomaszciszewski01@gmail.com?subject=${subjectEncoded}&body=${bodyMailtoEncoded}`;
+    }
+
+    // Funkcja do obsługi wersji iOS
+    function handleIOSReport(data, cleaned, links) {
+      console.log("Używanie metody dla iOS");
+      
+      const plainTextBody = [
+        "Zgłoszenie spamu - szczegóły wiadomości:",
+        "",
+        `Temat: ${data.subject}`,
+        `Nadawca: ${data.sender}`,
+        `Data otrzymania: ${data.receivedTime}`,
+        `ID wiadomości: ${data.messageId}`,
+        "",
+        "--- Treść wiadomości ---",
+        cleaned,
+        "--- Koniec treści ---",
+        "",
+        links.length > 0 ? "Wiadomość zawierała następujące linki:" : "Nie znaleziono linków w treści wiadomości.",
+        ...links.map(link => "- " + link),
+        "",
+        "Dziękujemy za pomoc w utrzymaniu bezpieczeństwa."
+      ].join("\n");
+
+      const subjectEncoded = encodeURIComponent("SPAM: " + data.subject);
+      const bodyMailtoEncoded = encodeURIComponent(plainTextBody);
+      
+      // Na iOS używamy elementu <a>
+      openMailtoUrl(`mailto:tomaszciszewski01@gmail.com?subject=${subjectEncoded}&body=${bodyMailtoEncoded}`);
+    }
+
+    // Funkcja do obsługi wersji desktopowej
+    function handleDesktopReport(data, reportBody) {
+      console.log("Używanie metody desktopowej");
+      
+      Office.context.mailbox.displayNewMessageForm({
+        toRecipients: ["tomaszciszewski01@gmail.com"],
+        subject: "SPAM: " + data.subject,
+        htmlBody: reportBody
+      });
     }
 
     Office.onReady(() => {
@@ -119,42 +204,29 @@
             "<p style='font-size:12px; color:#666;'>Dziękujemy za czujność i pomoc w utrzymaniu bezpieczeństwa naszej sieci.</p>"
           ].join("");
 
-          const platform = Office.context.mailbox.diagnostics.hostName;
+          const host = Office.context.mailbox.diagnostics.hostName;
+          const platform = Office.context.platform;
+          
+          console.log("Host: ", host);
+          console.log("Platform: ", platform);
+          
+          // Dokładniejsze wykrywanie platformy
+          const userAgent = window.navigator.userAgent.toLowerCase();
+          const isAndroid = userAgent.indexOf("android") > -1;
+          
+          console.log("User Agent: ", userAgent);
+          console.log("Is Android: ", isAndroid);
 
-          if (platform === "OutlookIOS") {
-            const plainTextBody = [
-              "Zgłoszenie spamu - szczegóły wiadomości:",
-              "",
-              `Temat: ${data.subject}`,
-              `Nadawca: ${data.sender}`,
-              `Data otrzymania: ${data.receivedTime}`,
-              `ID wiadomości: ${data.messageId}`,
-              "",
-              "--- Treść wiadomości ---",
-              cleaned,
-              "--- Koniec treści ---",
-              "",
-              links.length > 0 ? "Wiadomość zawierała następujące linki:" : "Nie znaleziono linków w treści wiadomości.",
-              ...links.map(link => "- " + link),
-              "",
-              "Dziękujemy za pomoc w utrzymaniu bezpieczeństwa."
-            ].join("\n");
-
-            const subjectEncoded = encodeURIComponent("SPAM: " + data.subject);
-            const bodyMailtoEncoded = encodeURIComponent(plainTextBody);
-
-            const a = document.createElement("a");
-            a.href = `mailto:tomaszciszewski01@gmail.com?subject=${subjectEncoded}&body=${bodyMailtoEncoded}`;
-            a.style.display = "none";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+          // Logika wyboru metody na podstawie platformy
+          if (host === "OutlookAndroid" || (host === "OutlookMobile" && isAndroid)) {
+            // Specjalna obsługa dla Androida
+            handleAndroidReport(data, cleaned, links);
+          } else if (host === "OutlookIOS" || host === "OutlookMobile") {
+            // Używamy standardowej metody dla iOS
+            handleIOSReport(data, cleaned, links);
           } else {
-            Office.context.mailbox.displayNewMessageForm({
-              toRecipients: ["tomaszciszewski01@gmail.com"],
-              subject: "SPAM: " + data.subject,
-              htmlBody: reportBody
-            });
+            // Wersja desktopowa
+            handleDesktopReport(data, reportBody);
           }
 
           showMessage("Zgłoszenie zostało przygotowane. Wyślij wiadomość, aby zakończyć proces.", "success");
