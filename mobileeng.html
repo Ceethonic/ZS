@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Zgłoś Spam - Mobilne</title>
+  <title>Report Spam - Mobile</title>
   <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
   <style>
     body {
@@ -81,30 +81,45 @@
     .footer a:hover {
       text-decoration: underline;
     }
+    @media (max-width: 600px) {
+      body {
+        padding: 16px;
+      }
+      .container {
+        padding: 24px 16px;
+      }
+      h1 {
+        font-size: 20px;
+      }
+      p {
+        font-size: 14px;
+      }
+    }
   </style>
 </head>
 <body>
   <div style="text-align: right; margin-bottom: 10px;">
     <a href="spam-reporter-index.html">
-      <img src="https://flagcdn.com/pl.svg" alt="PL" width="24" style="margin-right: 6px; vertical-align: middle;">
+      <img alt="PL" src="https://flagcdn.com/pl.svg" style="margin-right: 6px; vertical-align: middle;" width="24"/>
     </a>
     <a href="spam-reporter-indexENG.html">
-      <img src="https://flagcdn.com/gb.svg" alt="EN" width="24" style="vertical-align: middle;">
+      <img alt="EN" src="https://flagcdn.com/gb.svg" style="vertical-align: middle;" width="24"/>
     </a>
   </div>
+
   <div class="container">
     <div class="logo-container">
       <a href="https://ratels.pl" target="_blank">
         <img src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg" alt="Ratels Logo">
       </a>
     </div>
-    <h1>Zgłoszenie podejrzanej wiadomości</h1>
-    <p>Po kliknięciu przycisku zostanie przygotowana wiadomość z informacjami dla zespołu bezpieczeństwa.</p>
-    <button class="button" id="reportBtn">Zgłoś jako spam</button>
-    <div class="loading" id="loadingIndicator">Zbieranie danych...</div>
+    <h1>Report Suspicious Message</h1>
+    <p>After clicking the button, a message with details for the security team will be prepared.</p>
+    <button class="button" id="reportBtn">Report as Spam</button>
+    <div class="loading" id="loadingIndicator">Collecting data...</div>
     <div class="message" id="resultMessage"></div>
     <div class="footer">
-      <p><a href="https://ratels.pl/polityka-prywatnosci/" target="_blank">Polityka prywatności Mobilne</a></p>
+      <p><a href="https://ratels.pl/polityka-prywatnosci/" target="_blank">Privacy Policy (Mobile)</a></p>
     </div>
   </div>
 
@@ -112,8 +127,8 @@
     function showMessage(msg) {
       const div = document.getElementById("resultMessage");
       div.textContent = msg;
-      div.style.color = msg.includes("błąd") ? "#d83b01" :
-                        msg.includes("już wcześniej zgłoszona") ? "#f2c811" : "#107c10";
+      div.style.color = msg.includes("error") ? "#d83b01" :
+                        msg.includes("already reported") ? "#f2c811" : "#107c10";
     }
 
     function saveReportedMessage(messageId) {
@@ -137,26 +152,26 @@
 
         const item = Office.context.mailbox.item;
         if (!item) {
-          showMessage("Nie można pobrać szczegółów wiadomości.");
+          showMessage("Unable to retrieve message details.");
           loading.style.display = "none";
           return;
         }
 
         const data = {
-          subject: item.subject || "(brak tematu)",
-          sender: item.from ? (item.from.emailAddress || item.from.displayName) : "(nieznany nadawca)",
-          receivedTime: item.dateTimeCreated ? new Date(item.dateTimeCreated).toLocaleString() : "(nieznany czas)",
-          messageId: item.internetMessageId || "(brak ID)"
+          subject: item.subject || "(no subject)",
+          sender: item.from ? (item.from.emailAddress || item.from.displayName) : "(unknown sender)",
+          receivedTime: item.dateTimeCreated ? new Date(item.dateTimeCreated).toLocaleString() : "(unknown time)",
+          messageId: item.internetMessageId || "(no ID)"
         };
 
         if (saveReportedMessage(data.messageId)) {
-          showMessage("Ta wiadomość została już wcześniej zgłoszona.");
+          showMessage("This message has already been reported.");
           loading.style.display = "none";
           return;
         }
 
         item.body.getAsync(Office.CoercionType.Html, function(resultHtml) {
-          let cleaned = "(brak treści)";
+          let cleaned = "(no content)";
           let links = [];
 
           if (resultHtml.status === Office.AsyncResultStatus.Succeeded && resultHtml.value) {
@@ -177,21 +192,21 @@
           }
 
           const reportBody = [
-            "Zgłoszenie spamu - szczegóły wiadomości:",
+            "Spam report - message details:",
             "",
-            `Temat: ${data.subject}`,
-            `Nadawca: ${data.sender}`,
-            `Data otrzymania: ${data.receivedTime}`,
-            `ID wiadomości: ${data.messageId}`,
+            `Subject: ${data.subject}`,
+            `Sender: ${data.sender}`,
+            `Received: ${data.receivedTime}`,
+            `Message ID: ${data.messageId}`,
             "",
-            "--- Treść wiadomości ---",
+            "--- Message Content ---",
             cleaned,
-            "--- Koniec treści ---",
+            "--- End of Content ---",
             "",
-            links.length > 0 ? "Wiadomość zawierała następujące linki:" : "Nie znaleziono linków w treści wiadomości.",
+            links.length > 0 ? "The message contained the following links:" : "No links found in the message.",
             ...links.map(link => "- " + link),
             "",
-            "Prosze o zablokowanie wiadomości"
+            "Please block this message."
           ].join("\n");
 
           const subjectEncoded = encodeURIComponent("SPAM: " + data.subject);
@@ -206,7 +221,6 @@
             a.click();
             document.body.removeChild(a);
           } else {
-            // Encode as HTML to preserve formatting
             const safeHtml = `<pre>${reportBody.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>`;
             Office.context.mailbox.displayNewMessageForm({
               toRecipients: ["tomaszciszewski01@gmail.com"],
@@ -215,7 +229,7 @@
             });
           }
 
-          showMessage("Otworzono wiadomość z gotowym zgłoszeniem.");
+          showMessage("Report message created and ready to send.");
           loading.style.display = "none";
         });
       });
