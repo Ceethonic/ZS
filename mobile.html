@@ -99,12 +99,8 @@
 </head>
 <body>
   <div style="text-align: right; margin-bottom: 10px;">
-    <a href="mobile.html">
-      <img alt="PL" src="https://flagcdn.com/pl.svg" style="margin-right: 6px; vertical-align: middle;" width="24"/>
-    </a>
-    <a href="mobileeng.html">
-      <img alt="EN" src="https://flagcdn.com/gb.svg" style="vertical-align: middle;" width="24"/>
-    </a>
+    <a href="mobile.html"><img alt="PL" src="https://flagcdn.com/pl.svg" style="margin-right: 6px; vertical-align: middle;" width="24"/></a>
+    <a href="mobileeng.html"><img alt="EN" src="https://flagcdn.com/gb.svg" style="vertical-align: middle;" width="24"/></a>
   </div>
 
   <div class="container">
@@ -116,12 +112,13 @@
     <h1>Zgłoszenie podejrzanej wiadomości</h1>
     <p>Po kliknięciu przycisku zostanie przygotowana wiadomość z informacjami dla zespołu bezpieczeństwa.</p>
     <button class="button" id="reportBtn">Zgłoś jako spam</button>
-    <div class="loading" id="loadingIndicator">Zbieranie danych...</div>
-    <div class="message" id="resultMessage"></div>
     <div class="footer">
       <p><a href="https://ratels.pl/polityka-prywatnosci/" target="_blank">Polityka prywatności Mobilne</a></p>
     </div>
   </div>
+
+  <div class="loading" id="loadingIndicator">Zbieranie danych...</div>
+  <div class="message" id="resultMessage"></div>
 
   <script>
     function showMessage(msg) {
