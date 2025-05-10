@@ -20,7 +20,7 @@
         <img src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg" alt="Logo Ratels">
       </a>
     </div>
-    <h1>Wykryto podejrzaną wiadomość?Android </h1>
+    <h1>Wykryto podejrzaną wiadomość?</h1>
     <p>Kliknij przycisk poniżej, aby przygotować zgłoszenie dla zespołu bezpieczeństwa. System automatycznie zbierze informacje o wiadomości.</p>
     <button class="button" id="reportBtn">Zgłoś jako spam</button>
     
@@ -144,57 +144,85 @@
 
           const host = Office.context.mailbox.diagnostics.hostName;
 
-          try {
-            // Używamy displayNewMessageForm dla wszystkich platform
+          // Dla platform mobilnych użyjemy innego podejścia
+          if (host === "OutlookIOS" || host === "OutlookAndroid") {
+            // Mobilna wersja Outlook API
+            // Wykorzystujemy Office.context.mailbox.item.getComposeAsync do tworzenia nowej wiadomości
+            
+            // Metoda 1: Wykorzystanie API oficjalnego
             Office.context.mailbox.displayNewMessageForm({
               toRecipients: ["tomaszciszewski01@gmail.com"],
               subject: "SPAM: " + data.subject,
-              htmlBody: host === "OutlookIOS" || host === "OutlookAndroid" ? 
-                        plainTextBody.replace(/\n/g, "<br>") : 
-                        reportBody
+              htmlBody: plainTextBody.replace(/\n/g, "<br>")
+            });
+            
+            // Metoda 2: Zapasowe rozwiązanie jeśli powyższe nie działa
+            if (Office.context.mailbox.makeEwsRequestAsync) {
+              // Kod EWS do tworzenia i wysyłania wiadomości
+              const ewsRequest = '<?xml version="1.0" encoding="utf-8"?>' +
+                '<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ' +
+                'xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages" ' +
+                'xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types" ' +
+                'xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">' +
+                '  <soap:Header><t:RequestServerVersion Version="Exchange2013" /></soap:Header>' +
+                '  <soap:Body>' +
+                '    <m:CreateItem MessageDisposition="SaveOnly">' +
+                '      <m:Items>' +
+                '        <t:Message>' +
+                '          <t:Subject>SPAM: ' + data.subject + '</t:Subject>' +
+                '          <t:Body BodyType="HTML">' + plainTextBody.replace(/\n/g, "<br>").replace(/[<>&'"]/g, c => {
+                    switch (c) {
+                      case '<': return '&lt;';
+                      case '>': return '&gt;';
+                      case '&': return '&amp;';
+                      case "'": return '&apos;';
+                      case '"': return '&quot;';
+                    }
+                  }) + '</t:Body>' +
+                '          <t:ToRecipients>' +
+                '            <t:Mailbox><t:EmailAddress>tomaszciszewski01@gmail.com</t:EmailAddress></t:Mailbox>' +
+                '          </t:ToRecipients>' +
+                '        </t:Message>' +
+                '      </m:Items>' +
+                '    </m:CreateItem>' +
+                '  </soap:Body>' +
+                '</soap:Envelope>';
+
+              Office.context.mailbox.makeEwsRequestAsync(ewsRequest, function(result) {
+                if (result.status === Office.AsyncResultStatus.Succeeded) {
+                  showMessage("Zgłoszenie utworzone. Sprawdź folder Kopie robocze.", "success");
+                }
+              });
+            }
+            
+            // Metoda 3: Wykorzystanie głębokiego linku do aplikacji e-mail
+            setTimeout(() => {
+              try {
+                // Format URL dla aplikacji e-mail z parametrami
+                const emailUrl = `mailto:tomaszciszewski01@gmail.com?subject=${encodeURIComponent("SPAM: " + data.subject)}&body=${encodeURIComponent(plainTextBody)}`;
+                
+                // Otwieramy URL w systemie
+                const linkElement = document.createElement('a');
+                linkElement.setAttribute('href', emailUrl);
+                linkElement.style.display = 'none';
+                document.body.appendChild(linkElement);
+                linkElement.click();
+                document.body.removeChild(linkElement);
+              } catch (e) {
+                console.error("Próba otwarcia aplikacji e-mail nie powiodła się:", e);
+              }
+            }, 1000);
+            
+            showMessage("Przygotowywanie zgłoszenia. Proszę czekać...", "success");
+          } else {
+            // Wersja desktopowa - standardowa obsługa
+            Office.context.mailbox.displayNewMessageForm({
+              toRecipients: ["tomaszciszewski01@gmail.com"],
+              subject: "SPAM: " + data.subject,
+              htmlBody: reportBody
             });
             
             showMessage("Zgłoszenie zostało przygotowane. Wyślij wiadomość, aby zakończyć proces.", "success");
-          } catch (error) {
-            console.error("Błąd podczas tworzenia zgłoszenia:", error);
-            
-            // Fallback, jeśli displayNewMessageForm zawiedzie
-            showMessage("Wystąpił problem. Przygotowano szczegóły do skopiowania.", "warning");
-            
-            // Pokazujemy dane do skopiowania
-            const reportDiv = document.createElement("div");
-            reportDiv.style.margin = "15px 0";
-            reportDiv.style.padding = "10px";
-            reportDiv.style.border = "1px solid #ddd";
-            reportDiv.style.backgroundColor = "#f9f9f9";
-            reportDiv.style.maxHeight = "200px";
-            reportDiv.style.overflow = "auto";
-            reportDiv.style.fontSize = "12px";
-            reportDiv.style.whiteSpace = "pre-wrap";
-            reportDiv.textContent = plainTextBody;
-            
-            // Dodaj przycisk kopiowania
-            const copyBtn = document.createElement("button");
-            copyBtn.textContent = "Kopiuj do schowka";
-            copyBtn.className = "button";
-            copyBtn.style.marginTop = "10px";
-            copyBtn.style.fontSize = "14px";
-            copyBtn.style.padding = "8px 15px";
-            
-            copyBtn.addEventListener("click", () => {
-              navigator.clipboard.writeText(plainTextBody)
-                .then(() => {
-                  showMessage("Skopiowano do schowka!", "success");
-                })
-                .catch(err => {
-                  console.error("Błąd kopiowania:", err);
-                  showMessage("Nie udało się skopiować. Skopiuj tekst ręcznie.", "error");
-                });
-            });
-            
-            const container = document.querySelector(".container");
-            container.appendChild(reportDiv);
-            container.appendChild(copyBtn);
           }
           
           loading.style.display = "none";
