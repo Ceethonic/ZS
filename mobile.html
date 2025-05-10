@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Przekierowanie...</title>
+  <script>
+    (function() {
+      const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+
+      const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
+      const isAndroid = /android/i.test(userAgent);
+
+      if (isIOS) {
+        window.location.href = "https://ceethonic.github.io/ZS/mobile_ios.html";
+      } else if (isAndroid) {
+        window.location.href = "https://ceethonic.github.io/ZS/mobile_android.html";
+      } else {
+        // Domyślnie (np. Outlook Web lub nieznana platforma)
+        window.location.href = "https://ceethonic.github.io/ZS/mobile-default.html";
+      }
+    })();
+  </script>
+</head>
+<body>
+  <p>Przekierowywanie, proszę czekać...</p>
+</body>
+</html>
