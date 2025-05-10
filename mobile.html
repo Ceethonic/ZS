@@ -167,13 +167,7 @@
           showMessage("Zgłoszenie zostało przygotowane. Wyślij wiadomość, aby zakończyć proces.", "success");
           loading.style.display = "none";
           document.getElementById("reportBtn").disabled = false;
-
-          // Zamknij panel po krótkim opóźnieniu
-          setTimeout(() => {
-            if (Office.context.ui && Office.context.ui.closeContainer) {
-              Office.context.ui.closeContainer();
-            }
-          }, 400000);
+          
         });
       });
     });
