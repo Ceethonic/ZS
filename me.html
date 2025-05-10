@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Report Spam | Ratels Security</title>
+  <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
+  <!-- Import styles from CSS file -->
+  <link href="styles.css" rel="stylesheet">
+</head>
+<body>
+  <div class="lang-switcher">
+    <a href="mobile.html" aria-label="Polski"><img alt="PL" src="https://flagcdn.com/pl.svg" style="margin-right: 6px; vertical-align: middle;" width="24"/></a>
+    <a href="mobileeng.html" aria-label="English"><img alt="EN" src="https://flagcdn.com/gb.svg" style="vertical-align: middle;" width="24"/></a>
+  </div>
+
+  <div class="container">
+    <div class="logo-container">
+      <a href="https://ratels.pl" target="_blank" aria-label="Ratels Homepage">
+        <img src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg" alt="Ratels Logo">
+      </a>
+    </div>
+    <h1>Detected a suspicious message?</h1>
+    <p>Click the button below to prepare a report for the security team. The system will automatically collect information about the message.</p>
+    <button class="button" id="reportBtn">Report as Spam</button>
+    
+    <div id="loadingIndicator" class="loading">Analyzing message...</div>
+    <div id="resultMessage" class="message"></div>
+    
+    <div class="footer">
+      <p>© 2025 Ratels Security • <a href="https://ratels.pl/polityka-prywatnosci/" target="_blank">Privacy Policy</a></p>
+    </div>
+  </div>
+
+  <script>
+    function showMessage(text, type = 'success') {
+      const div = document.getElementById("resultMessage");
+      div.textContent = text;
+      div.className = 'message ' + type;
+      div.classList.add('show');
+      
+      // Automatically hide after 8 seconds
+      setTimeout(() => {
+        div.classList.remove('show');
+      }, 8000);
+    }
+
+    function saveReportedMessage(messageId) {
+      try {
+        const reportedMessages = JSON.parse(localStorage.getItem('reportedSpamMessages') || '[]');
+        if (!reportedMessages.includes(messageId)) {
+          reportedMessages.push(messageId);
+          localStorage.setItem('reportedSpamMessages', JSON.stringify(reportedMessages));
+          return false;
+        }
+        return true;
+      } catch (e) {
+        console.error("Report history error:", e);
+        return false;
+      }
+    }
+
+    Office.onReady(() => {
+      document.getElementById("reportBtn").addEventListener("click", () => {
+        const loading = document.getElementById("loadingIndicator");
+        loading.style.display = "block";
+        document.getElementById("reportBtn").disabled = true;
+
+        const item = Office.context.mailbox.item;
+        if (!item) {
+          showMessage("Unable to retrieve message details. Please try again.", "error");
+          loading.style.display = "none";
+          document.getElementById("reportBtn").disabled = false;
+          return;
+        }
+
+        const data = {
+          subject: item.subject || "(no subject)",
+          sender: item.from ? (item.from.emailAddress || item.from.displayName) : "(unknown sender)",
+          receivedTime: item.dateTimeCreated ? new Date(item.dateTimeCreated).toLocaleString() : "(unknown time)",
+          messageId: item.internetMessageId || "(no ID)"
+        };
+
+        if (saveReportedMessage(data.messageId)) {
+          showMessage("This message has already been reported.", "warning");
+          loading.style.display = "none";
+          document.getElementById("reportBtn").disabled = false;
+          return;
+        }
+
+        item.body.getAsync(Office.CoercionType.Html, function(resultHtml) {
+          let cleaned = "(no content)";
+          let links = [];
+
+          if (resultHtml.status === Office.AsyncResultStatus.Succeeded && resultHtml.value) {
+            const tempDiv = document.createElement("div");
+            tempDiv.innerHTML = resultHtml.value;
+            cleaned = tempDiv.textContent || tempDiv.innerText || resultHtml.value;
+            if (cleaned.length > 3000) {
+              cleaned = cleaned.substring(0, 2997) + "...";
+            }
+
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(resultHtml.value, 'text/html');
+            const anchors = doc.querySelectorAll('a[href]');
+            anchors.forEach(a => {
+              const href = a.getAttribute('href');
+              if (href && !links.includes(href)) links.push(href);
+            });
+          }
+
+          const reportBody = [
+            "<h2>Spam Message Report</h2>",
+            "<p>Below are the details of the reported message:</p>",
+            "<table style='width:100%; border-collapse: collapse;'>",
+            `<tr><td style='padding:8px; border-bottom:1px solid #eee; font-weight:bold;'>Subject:</td><td style='padding:8px; border-bottom:1px solid #eee;'>${data.subject}</td></tr>`,
+            `<tr><td style='padding:8px; border-bottom:1px solid #eee; font-weight:bold;'>Sender:</td><td style='padding:8px; border-bottom:1px solid #eee;'>${data.sender}</td></tr>`,
+            `<tr><td style='padding:8px; border-bottom:1px solid #eee; font-weight:bold;'>Received on:</td><td style='padding:8px; border-bottom:1px solid #eee;'>${data.receivedTime}</td></tr>`,
+            "</table>",
+            "<h3>Message Content:</h3>",
+            `<pre style='background:#f5f5f5; padding:10px; font-size:13px; overflow-x:auto;'>${cleaned}</pre>`,
+            links.length > 0 ? "<h3>Detected Links:</h3>" : "",
+            links.length > 0 ? "<ul style='margin-top:5px;'>" + links.map(link => `<li style='word-break:break-all;'>${link}</li>`).join("") + "</ul>" : "",
+            "<p style='font-size:12px; color:#666;'>Thank you for your vigilance and help in maintaining our network security.</p>"
+          ].join("");
+
+          const subjectEncoded = encodeURIComponent("SPAM: " + data.subject);
+          const bodyEncoded = encodeURIComponent(reportBody);
+          const host = Office.context.mailbox.diagnostics.hostName;
+
+          if (host === "OutlookIOS" || host === "OutlookAndroid") {
+            // Mobile platforms - use mailto link
+            const plainTextBody = [
+              "Spam report - message details:",
+              "",
+              `Subject: ${data.subject}`,
+              `Sender: ${data.sender}`,
+              `Received: ${data.receivedTime}`,
+              `Message ID: ${data.messageId}`,
+              "",
+              "--- Message Content ---",
+              cleaned,
+              "--- End of Content ---",
+              "",
+              links.length > 0 ? "The message contained the following links:" : "No links found in the message.",
+              ...links.map(link => "- " + link),
+              "",
+              "Thank you for helping maintain security."
+            ].join("\n");
+
+            const bodyMailtoEncoded = encodeURIComponent(plainTextBody);
+            const a = document.createElement("a");
+            a.href = `mailto:security@ratels.pl?subject=${subjectEncoded}&body=${bodyMailtoEncoded}`;
+            a.style.display = "none";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          } else {
+            // Desktop version - use displayNewMessageForm
+            Office.context.mailbox.displayNewMessageForm({
+              toRecipients: ["tomaszciszewski01@gmail.com"],
+              subject: "SPAM: " + data.subject,
+              htmlBody: reportBody
+            });
+          }
+
+          showMessage("Report has been prepared. Send the message to complete the process.", "success");
+          loading.style.display = "none";
+          document.getElementById("reportBtn").disabled = false;
+
+          // Close panel after a short delay
+          setTimeout(() => {
+            if (Office.context.ui && Office.context.ui.closeContainer) {
+              Office.context.ui.closeContainer();
+            }
+          }, 4000);
+        });
+      });
+    });
+  </script>
+</body>
+</html>
