@@ -20,7 +20,7 @@
         <img src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg" alt="Logo Ratels">
       </a>
     </div>
-    <h1>Wykryto podejrzaną wiadomość?</h1>
+    <h1>Wykryto podejrzaną wiadomość?00:47</h1>
     <p>Kliknij przycisk poniżej, aby przygotować zgłoszenie dla zespołu bezpieczeństwa. System automatycznie zbierze informacje o wiadomości.</p>
     <button class="button" id="reportBtn">Zgłoś jako spam</button>
     
@@ -144,76 +144,120 @@
 
           const host = Office.context.mailbox.diagnostics.hostName;
 
-          // Dla platform mobilnych użyjemy innego podejścia
+          // Dla platform mobilnych - różne podejście dla iOS i Android
           if (host === "OutlookIOS" || host === "OutlookAndroid") {
-            // Mobilna wersja Outlook API
-            // Wykorzystujemy Office.context.mailbox.item.getComposeAsync do tworzenia nowej wiadomości
+            // Na Androidzie unikamy używania mailto: i zamiast tego polegamy na natywnych funkcjach aplikacji
             
-            // Metoda 1: Wykorzystanie API oficjalnego
+            // Używamy displayNewMessageForm jako głównej metody
             Office.context.mailbox.displayNewMessageForm({
               toRecipients: ["tomaszciszewski01@gmail.com"],
               subject: "SPAM: " + data.subject,
               htmlBody: plainTextBody.replace(/\n/g, "<br>")
             });
             
-            // Metoda 2: Zapasowe rozwiązanie jeśli powyższe nie działa
-            if (Office.context.mailbox.makeEwsRequestAsync) {
-              // Kod EWS do tworzenia i wysyłania wiadomości
-              const ewsRequest = '<?xml version="1.0" encoding="utf-8"?>' +
-                '<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ' +
-                'xmlns:m="http://schemas.microsoft.com/exchange/services/2006/messages" ' +
-                'xmlns:t="http://schemas.microsoft.com/exchange/services/2006/types" ' +
-                'xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">' +
-                '  <soap:Header><t:RequestServerVersion Version="Exchange2013" /></soap:Header>' +
-                '  <soap:Body>' +
-                '    <m:CreateItem MessageDisposition="SaveOnly">' +
-                '      <m:Items>' +
-                '        <t:Message>' +
-                '          <t:Subject>SPAM: ' + data.subject + '</t:Subject>' +
-                '          <t:Body BodyType="HTML">' + plainTextBody.replace(/\n/g, "<br>").replace(/[<>&'"]/g, c => {
-                    switch (c) {
-                      case '<': return '&lt;';
-                      case '>': return '&gt;';
-                      case '&': return '&amp;';
-                      case "'": return '&apos;';
-                      case '"': return '&quot;';
-                    }
-                  }) + '</t:Body>' +
-                '          <t:ToRecipients>' +
-                '            <t:Mailbox><t:EmailAddress>tomaszciszewski01@gmail.com</t:EmailAddress></t:Mailbox>' +
-                '          </t:ToRecipients>' +
-                '        </t:Message>' +
-                '      </m:Items>' +
-                '    </m:CreateItem>' +
-                '  </soap:Body>' +
-                '</soap:Envelope>';
-
-              Office.context.mailbox.makeEwsRequestAsync(ewsRequest, function(result) {
-                if (result.status === Office.AsyncResultStatus.Succeeded) {
-                  showMessage("Zgłoszenie utworzone. Sprawdź folder Kopie robocze.", "success");
-                }
-              });
-            }
+            // Pokazujemy komunikat i elementy pozwalające skopiować treść wiadomości
+            // jako plan awaryjny
+            showMessage("Próba utworzenia nowej wiadomości...", "success");
             
-            // Metoda 3: Wykorzystanie głębokiego linku do aplikacji e-mail
-            setTimeout(() => {
-              try {
-                // Format URL dla aplikacji e-mail z parametrami
-                const emailUrl = `mailto:tomaszciszewski01@gmail.com?subject=${encodeURIComponent("SPAM: " + data.subject)}&body=${encodeURIComponent(plainTextBody)}`;
-                
-                // Otwieramy URL w systemie
-                const linkElement = document.createElement('a');
-                linkElement.setAttribute('href', emailUrl);
-                linkElement.style.display = 'none';
-                document.body.appendChild(linkElement);
-                linkElement.click();
-                document.body.removeChild(linkElement);
-              } catch (e) {
-                console.error("Próba otwarcia aplikacji e-mail nie powiodła się:", e);
+            // Dodajemy ukryte pole wyboru - po kliknięciu pojawi się treść do skopiowania
+            const showDetailsLink = document.createElement("button");
+            showDetailsLink.textContent = "Pokaż szczegóły do skopiowania";
+            showDetailsLink.className = "button";
+            showDetailsLink.style.marginTop = "15px";
+            showDetailsLink.style.backgroundColor = "#f0f0f0";
+            showDetailsLink.style.color = "#333";
+            showDetailsLink.style.border = "1px solid #ccc";
+            showDetailsLink.style.display = "block";
+            showDetailsLink.style.width = "100%";
+            showDetailsLink.style.padding = "10px";
+            showDetailsLink.style.textAlign = "center";
+            showDetailsLink.style.borderRadius = "4px";
+            
+            const reportDetails = document.createElement("div");
+            reportDetails.style.display = "none";
+            reportDetails.style.margin = "15px 0";
+            reportDetails.style.padding = "15px";
+            reportDetails.style.border = "1px solid #ddd";
+            reportDetails.style.backgroundColor = "#f9f9f9";
+            reportDetails.style.maxHeight = "300px";
+            reportDetails.style.overflow = "auto";
+            reportDetails.style.fontSize = "14px";
+            reportDetails.style.whiteSpace = "pre-wrap";
+            reportDetails.style.borderRadius = "4px";
+            reportDetails.textContent = plainTextBody;
+            
+            const copyBtn = document.createElement("button");
+            copyBtn.textContent = "Kopiuj do schowka";
+            copyBtn.className = "button";
+            copyBtn.style.marginTop = "10px";
+            copyBtn.style.display = "none";
+            copyBtn.style.width = "100%";
+            
+            showDetailsLink.addEventListener("click", () => {
+              if (reportDetails.style.display === "none") {
+                reportDetails.style.display = "block";
+                copyBtn.style.display = "block";
+                showDetailsLink.textContent = "Ukryj szczegóły";
+              } else {
+                reportDetails.style.display = "none";
+                copyBtn.style.display = "none";
+                showDetailsLink.textContent = "Pokaż szczegóły do skopiowania";
               }
-            }, 1000);
+            });
             
-            showMessage("Przygotowywanie zgłoszenia. Proszę czekać...", "success");
+            copyBtn.addEventListener("click", () => {
+              // Na urządzeniach mobilnych nie wszystkie przeglądarki wspierają clipboard API
+              // dlatego używamy metody zaznaczenia i skopiowania
+              const range = document.createRange();
+              range.selectNodeContents(reportDetails);
+              const selection = window.getSelection();
+              selection.removeAllRanges();
+              selection.addRange(range);
+              
+              try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                  showMessage("Skopiowano do schowka!", "success");
+                } else {
+                  showMessage("Zaznaczono tekst, skopiuj ręcznie", "warning");
+                }
+              } catch (err) {
+                console.error("Błąd kopiowania:", err);
+                showMessage("Zaznaczono tekst, skopiuj ręcznie", "warning");
+              }
+              
+              selection.removeAllRanges();
+            });
+            
+            const container = document.querySelector(".container");
+            container.appendChild(showDetailsLink);
+            container.appendChild(reportDetails);
+            container.appendChild(copyBtn);
+            
+            // Dodajemy przycisk do otwarcia aplikacji email
+            const openEmailAppBtn = document.createElement("button");
+            openEmailAppBtn.textContent = "Otwórz aplikację e-mail";
+            openEmailAppBtn.className = "button";
+            openEmailAppBtn.style.marginTop = "15px";
+            openEmailAppBtn.style.display = "block";
+            openEmailAppBtn.style.width = "100%";
+            
+            openEmailAppBtn.addEventListener("click", () => {
+              try {
+                window.location.href = "ms-outlook://compose?to=tomaszciszewski01@gmail.com&subject=" + 
+                  encodeURIComponent("SPAM: " + data.subject);
+                
+                setTimeout(() => {
+                  // Jeśli powyższy link nie zadziała, próbujemy ogólny schemat dla aplikacji e-mail
+                  window.location.href = "content://com.android.email.provider";
+                }, 1000);
+              } catch (e) {
+                console.error("Nie udało się otworzyć aplikacji e-mail:", e);
+                showMessage("Nie udało się otworzyć aplikacji e-mail", "error");
+              }
+            });
+            
+            container.appendChild(openEmailAppBtn);
           } else {
             // Wersja desktopowa - standardowa obsługa
             Office.context.mailbox.displayNewMessageForm({
