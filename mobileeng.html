@@ -99,12 +99,8 @@
 </head>
 <body>
   <div style="text-align: right; margin-bottom: 10px;">
-    <a href="s=mobilne.html">
-      <img alt="PL" src="https://flagcdn.com/pl.svg" style="margin-right: 6px; vertical-align: middle;" width="24"/>
-    </a>
-    <a href="mobilneeng.html">
-      <img alt="EN" src="https://flagcdn.com/gb.svg" style="vertical-align: middle;" width="24"/>
-    </a>
+    <a href="mobilne.html"><img alt="PL" src="https://flagcdn.com/pl.svg" style="margin-right: 6px; vertical-align: middle;" width="24"/></a>
+    <a href="mobilneeng.html"><img alt="EN" src="https://flagcdn.com/gb.svg" style="vertical-align: middle;" width="24"/></a>
   </div>
 
   <div class="container">
@@ -116,12 +112,13 @@
     <h1>Report Suspicious Message</h1>
     <p>After clicking the button, a message with details for the security team will be prepared.</p>
     <button class="button" id="reportBtn">Report as Spam</button>
-    <div class="loading" id="loadingIndicator">Collecting data...</div>
-    <div class="message" id="resultMessage"></div>
     <div class="footer">
-      <p><a href="https://ratels.pl/polityka-prywatnosci/" target="_blank">Privacy Policy </a></p>
+      <p><a href="https://ratels.pl/polityka-prywatnosci/" target="_blank">Privacy Policy</a></p>
     </div>
   </div>
+
+  <div class="loading" id="loadingIndicator">Collecting data...</div>
+  <div class="message" id="resultMessage"></div>
 
   <script>
     function showMessage(msg) {
