@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Zgłoś Spam | Ratels Security</title>
   <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
+  <!-- Zaimportuj style z pliku CSS -->
   <link href="styles.css" rel="stylesheet">
 </head>
 <body>
@@ -19,29 +20,60 @@
         <img src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg" alt="Logo Ratels">
       </a>
     </div>
-    <h1>Wykryto podejrzaną wiadomość?</h1>
+    <h1>Wykryto podejrzaną wiadomość? Android</h1>
     <p>Kliknij przycisk poniżej, aby przygotować zgłoszenie dla zespołu bezpieczeństwa. System automatycznie zbierze informacje o wiadomości.</p>
     <button class="button" id="reportBtn">Zgłoś jako spam</button>
-
+    
     <div id="loadingIndicator" class="loading">Analizowanie wiadomości...</div>
     <div id="resultMessage" class="message"></div>
-
+    
+    <div id="reportContainer" style="display: none;">
+      <h3>Szczegóły zgłoszenia</h3>
+      <div id="reportDetails" class="report-details"></div>
+      
+      <div class="action-buttons">
+        <button class="button" id="copyBtn">Kopiuj tekst zgłoszenia</button>
+        <button class="button primary-button" id="composeMailBtn">Otwórz kompozytor e-mail</button>
+      </div>
+      
+      <p class="hint">Jeśli przyciski nie działają, skopiuj tekst zgłoszenia i wyślij ręcznie na adres <strong>tomaszciszewski01@gmail.com</strong></p>
+    </div>
+    
     <div class="footer">
       <p>© 2025 Ratels Security • <a href="https://ratels.pl/polityka-prywatnosci/" target="_blank">Polityka prywatności</a></p>
     </div>
   </div>
 
   <script>
+    // Wykrywanie systemu Android
+    function isAndroid() {
+      return /Android/i.test(navigator.userAgent);
+    }
+    
+    // Wykrywanie przeglądarki
+    function getBrowser() {
+      const ua = navigator.userAgent;
+      if (ua.includes("Chrome")) return "Chrome";
+      if (ua.includes("Firefox")) return "Firefox";
+      if (ua.includes("Edge")) return "Edge";
+      if (ua.includes("Safari")) return "Safari";
+      return "Unknown";
+    }
+    
+    // Pokazywanie komunikatów
     function showMessage(text, type = 'success') {
       const div = document.getElementById("resultMessage");
       div.textContent = text;
       div.className = 'message ' + type;
       div.classList.add('show');
+      
+      // Automatyczne ukrycie po 8 sekundach
       setTimeout(() => {
         div.classList.remove('show');
       }, 8000);
     }
 
+    // Zapisywanie informacji o zgłoszeniach
     function saveReportedMessage(messageId) {
       try {
         const reportedMessages = JSON.parse(localStorage.getItem('reportedSpamMessages') || '[]');
@@ -56,63 +88,181 @@
         return false;
       }
     }
-
-    Office.onReady(() => {
-      document.getElementById("reportBtn").addEventListener("click", () => {
-        const loading = document.getElementById("loadingIndicator");
-        loading.style.display = "block";
-        document.getElementById("reportBtn").disabled = true;
-
+    
+    // Kopiowanie tekstu do schowka
+    function copyTextToClipboard(text) {
+      // Nowoczesna metoda z Clipboard API
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text)
+          .then(() => showMessage("Skopiowano do schowka!", "success"))
+          .catch(err => {
+            console.error("Nie udało się skopiować: ", err);
+            fallbackCopyTextToClipboard(text);
+          });
+        return;
+      }
+      
+      // Metoda rezerwowa dla starszych przeglądarek
+      fallbackCopyTextToClipboard(text);
+    }
+    
+    // Rezerwowa metoda kopiowania
+    function fallbackCopyTextToClipboard(text) {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.position = "fixed";
+      textArea.style.opacity = "0";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+          showMessage("Skopiowano do schowka!", "success");
+        } else {
+          showMessage("Nie udało się skopiować. Zaznacz tekst ręcznie.", "warning");
+        }
+      } catch (err) {
+        console.error("Nie udało się skopiować: ", err);
+        showMessage("Nie udało się skopiować. Zaznacz tekst ręcznie.", "warning");
+      }
+      
+      document.body.removeChild(textArea);
+    }
+    
+    // Uruchamianie różnych metod otwierania maila
+    function tryComposeEmail(recipient, subject, body) {
+      // Tablica prób różnych schematów URL dla aplikacji e-mail
+      const attempts = [
+        () => window.open(`mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`),
+        () => window.location.href = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
+        () => window.location.href = `ms-outlook://compose?to=${recipient}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`,
+        () => window.location.href = "content://com.android.email.provider",
+        () => window.location.href = "https://outlook.office.com/mail/deeplink/compose",
+        () => window.location.href = "https://outlook.live.com/mail/deeplink/compose"
+      ];
+      
+      // Wykonujemy pierwszą próbę
+      attempts[0]();
+      
+      // Setup sequence of alternative attempts with delays
+      let attemptIndex = 1;
+      const tryNextMethod = () => {
+        if (attemptIndex < attempts.length) {
+          try {
+            attempts[attemptIndex]();
+            attemptIndex++;
+          } catch (e) {
+            console.error(`Próba ${attemptIndex} nieudana:`, e);
+          }
+        } else {
+          showMessage("Nie udało się otworzyć aplikacji e-mail. Skopiuj tekst i wyślij ręcznie.", "warning");
+        }
+      };
+      
+      // Try alternative methods with delays
+      setTimeout(tryNextMethod, 1000);
+      setTimeout(tryNextMethod, 2000);
+    }
+    
+    // Funkcja inicjalizująca aplikację
+    function initializeApp() {
+      // Inicjalizacja komponentów UI
+      const reportBtn = document.getElementById("reportBtn");
+      const copyBtn = document.getElementById("copyBtn");
+      const composeMailBtn = document.getElementById("composeMailBtn");
+      const loadingIndicator = document.getElementById("loadingIndicator");
+      const reportContainer = document.getElementById("reportContainer");
+      const reportDetails = document.getElementById("reportDetails");
+      
+      // Zmienne do przechowywania danych raportu
+      let reportData = null;
+      let reportPlainText = "";
+      let reportHtml = "";
+      
+      // Obsługa zgłaszania wiadomości
+      reportBtn.addEventListener("click", () => {
+        loadingIndicator.style.display = "block";
+        reportBtn.disabled = true;
+        reportContainer.style.display = "none";
+        
+        // Sprawdzamy czy mamy dostęp do bieżącej wiadomości
         const item = Office.context.mailbox.item;
         if (!item) {
           showMessage("Nie można pobrać szczegółów wiadomości. Spróbuj ponownie.", "error");
-          loading.style.display = "none";
-          document.getElementById("reportBtn").disabled = false;
+          loadingIndicator.style.display = "none";
+          reportBtn.disabled = false;
           return;
         }
-
-        const data = {
+        
+        // Zbieramy podstawowe dane
+        reportData = {
           subject: item.subject || "(brak tematu)",
           sender: item.from ? (item.from.emailAddress || item.from.displayName) : "(nieznany nadawca)",
           receivedTime: item.dateTimeCreated ? new Date(item.dateTimeCreated).toLocaleString() : "(nieznany czas)",
           messageId: item.internetMessageId || "(brak ID)"
         };
-
-        if (saveReportedMessage(data.messageId)) {
+        
+        // Sprawdzamy czy wiadomość została już zgłoszona
+        if (saveReportedMessage(reportData.messageId)) {
           showMessage("Ta wiadomość została już wcześniej zgłoszona.", "warning");
-          loading.style.display = "none";
-          document.getElementById("reportBtn").disabled = false;
+          loadingIndicator.style.display = "none";
+          reportBtn.disabled = false;
           return;
         }
-
+        
+        // Pobieramy treść wiadomości
         item.body.getAsync(Office.CoercionType.Html, function(resultHtml) {
           let cleaned = "(brak treści)";
           let links = [];
-
+          
           if (resultHtml.status === Office.AsyncResultStatus.Succeeded && resultHtml.value) {
+            // Czyszczenie i wyodrębnianie tekstu z HTML
             const tempDiv = document.createElement("div");
             tempDiv.innerHTML = resultHtml.value;
             cleaned = tempDiv.textContent || tempDiv.innerText || resultHtml.value;
             if (cleaned.length > 3000) {
               cleaned = cleaned.substring(0, 2997) + "...";
             }
-
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(resultHtml.value, 'text/html');
-            const anchors = doc.querySelectorAll('a[href]');
-            anchors.forEach(a => {
-              const href = a.getAttribute('href');
-              if (href && !links.includes(href)) links.push(href);
-            });
+            
+            // Wyodrębnianie linków
+            try {
+              const parser = new DOMParser();
+              const doc = parser.parseFromString(resultHtml.value, 'text/html');
+              const anchors = doc.querySelectorAll('a[href]');
+              anchors.forEach(a => {
+                const href = a.getAttribute('href');
+                if (href && !links.includes(href)) links.push(href);
+              });
+            } catch (e) {
+              console.error("Błąd podczas parsowania HTML", e);
+            }
           }
-
-          const plainTextBody = [
+          
+          // Tworzenie raportów w formatach HTML i tekstowym
+          reportHtml = [
+            "<h2>Zgłoszenie wiadomości spam</h2>",
+            "<p>Poniżej znajdują się szczegóły zgłoszonej wiadomości:</p>",
+            "<table style='width:100%; border-collapse: collapse;'>",
+            `<tr><td style='padding:8px; border-bottom:1px solid #eee; font-weight:bold;'>Temat:</td><td style='padding:8px; border-bottom:1px solid #eee;'>${reportData.subject}</td></tr>`,
+            `<tr><td style='padding:8px; border-bottom:1px solid #eee; font-weight:bold;'>Nadawca:</td><td style='padding:8px; border-bottom:1px solid #eee;'>${reportData.sender}</td></tr>`,
+            `<tr><td style='padding:8px; border-bottom:1px solid #eee; font-weight:bold;'>Data otrzymania:</td><td style='padding:8px; border-bottom:1px solid #eee;'>${reportData.receivedTime}</td></tr>`,
+            "</table>",
+            "<h3>Treść wiadomości:</h3>",
+            `<pre style='background:#f5f5f5; padding:10px; font-size:13px; overflow-x:auto;'>${cleaned}</pre>`,
+            links.length > 0 ? "<h3>Wykryte linki:</h3>" : "",
+            links.length > 0 ? "<ul style='margin-top:5px;'>" + links.map(link => `<li style='word-break:break-all;'>${link}</li>`).join("") + "</ul>" : "",
+            "<p style='font-size:12px; color:#666;'>Dziękujemy za czujność i pomoc w utrzymaniu bezpieczeństwa naszej sieci.</p>"
+          ].join("");
+          
+          reportPlainText = [
             "Zgłoszenie spamu - szczegóły wiadomości:",
             "",
-            `Temat: ${data.subject}`,
-            `Nadawca: ${data.sender}`,
-            `Data otrzymania: ${data.receivedTime}`,
-            `ID wiadomości: ${data.messageId}`,
+            `Temat: ${reportData.subject}`,
+            `Nadawca: ${reportData.sender}`,
+            `Data otrzymania: ${reportData.receivedTime}`,
+            `ID wiadomości: ${reportData.messageId}`,
             "",
             "--- Treść wiadomości ---",
             cleaned,
@@ -123,61 +273,97 @@
             "",
             "Dziękujemy za pomoc w utrzymaniu bezpieczeństwa."
           ].join("\n");
-
-          try {
+          
+          // Określamy platformę
+          const host = Office.context.mailbox.diagnostics.hostName;
+          const isAndroidDevice = isAndroid() || host === "OutlookAndroid";
+          
+          // Obsługa w zależności od platformy
+          if (isAndroidDevice) {
+            // Wersja dla Androida - pokazujemy dane do skopiowania i przyciski akcji
+            reportDetails.textContent = reportPlainText;
+            reportContainer.style.display = "block";
+            
+            // Specjalna obsługa dla Androida - próba pierwszego otwarcia
+            try {
+              Office.context.mailbox.displayNewMessageForm({
+                toRecipients: ["tomaszciszewski01@gmail.com"],
+                subject: "SPAM: " + reportData.subject,
+                htmlBody: reportHtml
+              });
+            } catch (e) {
+              console.error("Błąd wyświetlania nowego formularza wiadomości:", e);
+            }
+            
+            showMessage("Przygotowano zgłoszenie. Wybierz sposób wysyłki poniżej.", "success");
+          } else {
+            // Wersja desktopowa lub iOS - standardowa obsługa
             Office.context.mailbox.displayNewMessageForm({
               toRecipients: ["tomaszciszewski01@gmail.com"],
-              subject: "SPAM: " + data.subject,
-              htmlBody: plainTextBody.replace(/\n/g, "<br>")
+              subject: "SPAM: " + reportData.subject,
+              htmlBody: reportHtml
             });
-
+            
             showMessage("Zgłoszenie zostało przygotowane. Wyślij wiadomość, aby zakończyć proces.", "success");
-          } catch (e) {
-            console.error("Nie udało się utworzyć wiadomości:", e);
-            showMessage("Nie udało się otworzyć formularza wiadomości. Skopiuj dane ręcznie.", "error");
-
-            const reportDetails = document.createElement("div");
-            reportDetails.style.marginTop = "15px";
-            reportDetails.style.padding = "10px";
-            reportDetails.style.border = "1px solid #ccc";
-            reportDetails.style.backgroundColor = "#f9f9f9";
-            reportDetails.style.whiteSpace = "pre-wrap";
-            reportDetails.style.fontSize = "13px";
-            reportDetails.textContent = plainTextBody;
-
-            const copyBtn = document.createElement("button");
-            copyBtn.textContent = "Kopiuj treść do schowka";
-            copyBtn.className = "button";
-            copyBtn.style.marginTop = "10px";
-            copyBtn.addEventListener("click", () => {
-              const range = document.createRange();
-              range.selectNodeContents(reportDetails);
-              const sel = window.getSelection();
-              sel.removeAllRanges();
-              sel.addRange(range);
-              try {
-                const successful = document.execCommand('copy');
-                if (successful) {
-                  showMessage("Skopiowano do schowka", "success");
-                } else {
-                  showMessage("Zaznaczono treść - skopiuj ręcznie", "warning");
-                }
-              } catch (err) {
-                showMessage("Nie udało się skopiować - zaznacz treść ręcznie", "error");
-              }
-              sel.removeAllRanges();
-            });
-
-            const container = document.querySelector(".container");
-            container.appendChild(reportDetails);
-            container.appendChild(copyBtn);
           }
-
-          loading.style.display = "none";
-          document.getElementById("reportBtn").disabled = false;
+          
+          loadingIndicator.style.display = "none";
+          reportBtn.disabled = false;
         });
       });
+      
+      // Obsługa przycisku kopiowania
+      copyBtn.addEventListener("click", () => {
+        copyTextToClipboard(reportPlainText);
+      });
+      
+      // Obsługa przycisku komponowania maila
+      composeMailBtn.addEventListener("click", () => {
+        const recipient = "tomaszciszewski01@gmail.com";
+        const subject = "SPAM: " + (reportData ? reportData.subject : "Podejrzana wiadomość");
+        tryComposeEmail(recipient, subject, reportPlainText);
+      });
+    }
+    
+    // Inicjalizacja po załadowaniu Office.js
+    Office.onReady(() => {
+      initializeApp();
     });
   </script>
+  
+  <style>
+    /* Dodatkowe style dla raportu */
+    .report-details {
+      background-color: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 12px;
+      margin: 15px 0;
+      font-family: monospace;
+      font-size: 14px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    .action-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin: 15px 0;
+    }
+    
+    .primary-button {
+      background-color: #0078d4;
+    }
+    
+    .hint {
+      font-size: 14px;
+      color: #666;
+      margin-top: 15px;
+      line-height: 1.4;
+    }
+  </style>
 </body>
 </html>
