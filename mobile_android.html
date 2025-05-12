@@ -19,7 +19,7 @@
         <img src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg" alt="Logo Ratels">
       </a>
     </div>
-    <h1>Wykryto podejrzaną wiadomość? A</h1>
+    <h1>Wykryto podejrzaną wiadomość?</h1>
     <p>Kliknij przycisk poniżej, aby przygotować zgłoszenie dla zespołu bezpieczeństwa. System automatycznie zbierze informacje o wiadomości.</p>
     <button class="button" id="reportBtn">Zgłoś jako spam</button>
 
@@ -135,6 +135,42 @@
           } catch (e) {
             console.error("Nie udało się utworzyć wiadomości:", e);
             showMessage("Nie udało się otworzyć formularza wiadomości. Skopiuj dane ręcznie.", "error");
+
+            const reportDetails = document.createElement("div");
+            reportDetails.style.marginTop = "15px";
+            reportDetails.style.padding = "10px";
+            reportDetails.style.border = "1px solid #ccc";
+            reportDetails.style.backgroundColor = "#f9f9f9";
+            reportDetails.style.whiteSpace = "pre-wrap";
+            reportDetails.style.fontSize = "13px";
+            reportDetails.textContent = plainTextBody;
+
+            const copyBtn = document.createElement("button");
+            copyBtn.textContent = "Kopiuj treść do schowka";
+            copyBtn.className = "button";
+            copyBtn.style.marginTop = "10px";
+            copyBtn.addEventListener("click", () => {
+              const range = document.createRange();
+              range.selectNodeContents(reportDetails);
+              const sel = window.getSelection();
+              sel.removeAllRanges();
+              sel.addRange(range);
+              try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                  showMessage("Skopiowano do schowka", "success");
+                } else {
+                  showMessage("Zaznaczono treść - skopiuj ręcznie", "warning");
+                }
+              } catch (err) {
+                showMessage("Nie udało się skopiować - zaznacz treść ręcznie", "error");
+              }
+              sel.removeAllRanges();
+            });
+
+            const container = document.querySelector(".container");
+            container.appendChild(reportDetails);
+            container.appendChild(copyBtn);
           }
 
           loading.style.display = "none";
