@@ -1,69 +1,60 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Raport Spamu</title>
-    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js" type="text/javascript"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            padding: 0;
-        }
-        button {
-            background-color: #0078d4;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        button:hover {
-            background-color: #005a9e;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Zgłoś spam</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2em; }
+    label { display: block; margin-top: 1em; }
+    input, textarea { width: 100%; padding: 0.5em; margin-top: 0.2em; }
+    button { margin-top: 1em; padding: 0.7em 1.5em; }
+    .success { color: green; }
+    .error { color: red; }
+  </style>
 </head>
 <body>
-    <button id="reportSpam">Report Spam</button>
-
-    <script>
-        Office.onReady(function() {
-            document.getElementById('reportSpam').addEventListener('click', reportSpam);
+  <h2>Zgłoś spam</h2>
+  <form id="spamForm">
+    <label>
+      Adres nadawcy:
+      <input type="email" name="sender" required>
+    </label>
+    <label>
+      Temat wiadomości:
+      <input type="text" name="subject" required>
+    </label>
+    <label>
+      Treść wiadomości:
+      <textarea name="body" rows="5" required></textarea>
+    </label>
+    <button type="submit">Zgłoś</button>
+  </form>
+  <div id="result"></div>
+  <script>
+    document.getElementById('spamForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const form = e.target;
+      const data = {
+        sender: form.sender.value,
+        subject: form.subject.value,
+        body: form.body.value
+      };
+      try {
+        const res = await fetch('http://51.38.204.119:3000/report-spam', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
         });
-
-        function reportSpam() {
-            Office.context.mailbox.item.body.getAsync(Office.CoercionType.Text, function(result) {
-                if (result.status === Office.AsyncResultStatus.Succeeded) {
-                    const messageBody = result.value;
-                    const links = extractLinks(messageBody);
-                    
-                    const emailBody = `
-                        Temat oryginalnej wiadomości: ${Office.context.mailbox.item.subject}
-                        Nadawca: ${Office.context.mailbox.item.sender.emailAddress.address}
-                        Data otrzymania: ${Office.context.mailbox.item.dateTimeReceived}
-                        ID wiadomości: ${Office.context.mailbox.item.itemId}
-                        
-                        Treść wiadomości:
-                        ${messageBody}
-                        
-                        Znalezione linki:
-                        ${links.join('\n')}
-                        
-                        Dziękujemy za zgłoszenie spamu!
-                    `;
-
-                    const mailtoLink = `mailto:tomaszciszewski01@gmail.com?subject=${encodeURIComponent('Spam Report - Message Details')}&body=${encodeURIComponent(emailBody)}`;
-                    window.location.href = mailtoLink;
-                }
-            });
+        if (res.ok) {
+          document.getElementById('result').innerHTML = '<p class="success">Zgłoszenie wysłane!</p>';
+          form.reset();
+        } else {
+          document.getElementById('result').innerHTML = '<p class="error">Błąd podczas wysyłania zgłoszenia.</p>';
         }
-
-        function extractLinks(text) {
-            const urlRegex = /(https?:\/\/[^\s]+)/g;
-            return text.match(urlRegex) || [];
-        }
-    </script>
+      } catch (err) {
+        document.getElementById('result').innerHTML = '<p class="error">Błąd sieci: ' + err.message + '</p>';
+      }
+    });
+  </script>
 </body>
 </html>
