@@ -19,7 +19,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>Zgłoś spam 15:50 </h1>
+    <h1>Zgłoś spam</h1>
     <p>Kliknij przycisk, aby zgłosić podejrzaną wiadomość do zespołu bezpieczeństwa.</p>
     <button id="reportBtn">Zgłoś jako spam</button>
     <div id="resultMessage" class="message" style="display:none"></div>
@@ -99,16 +99,20 @@
             try {
               result = JSON.parse(responseText);
             } catch (e) {
-              showMessage("Błąd: nieprawidłowa odpowiedź serwera.", "error");
+              showMessage("Błąd: nieprawidłowa odpowiedź serwera (status: " + res.status + "): " + responseText, "error");
               log("Błąd parsowania odpowiedzi JSON: " + e.message);
               document.getElementById("reportBtn").disabled = false;
               return;
             }
-            showMessage(result.success ? "Zgłoszono!" : "Błąd: " + result.error, result.success ? "success" : "error");
+            if (res.ok && result.success) {
+              showMessage("Zgłoszono!", "success");
+            } else {
+              showMessage("Błąd: " + (result.error || responseText), "error");
+            }
             document.getElementById("reportBtn").disabled = false;
           })
           .catch(err => {
-            showMessage("Błąd połączenia: " + err.message, "error");
+            showMessage("Błąd połączenia (np. CORS, sieć): " + err.message, "error");
             log("Błąd fetch: " + err.message);
             document.getElementById("reportBtn").disabled = false;
           });
