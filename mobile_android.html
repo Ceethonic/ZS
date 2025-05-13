@@ -12,14 +12,14 @@
     .message { margin: 16px 0; padding: 12px; border-radius: 4px; }
     .success { background: #e6ffe6; color: #1a7f1a; }
     .error { background: #ffe6e6; color: #a11a1a; }
-    .log { background: #f0f0f0; color: #333; font-size: 0.95em; margin-top: 10px; padding: 8px; border-radius: 4px; max-height: 200px; overflow-y: auto; }
+    .log { background: #f0f0f0; color: #333; font-size: 0.95em; margin-top: 10px; padding: 8px; border-radius: 4px; max-height: 300px; overflow-y: auto; }
     button { margin-top: 12px; padding: 8px 16px; font-size: 1em; border-radius: 4px; border: none; background: #0078d4; color: #fff; cursor: pointer; }
     button:active { background: #005fa3; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Zgłoś spam</h1>
+    <h1>Zgłoś spamAAA </h1>
     <p>Kliknij przycisk, aby zgłosić podejrzaną wiadomość do zespołu bezpieczeństwa.</p>
     <button id="reportBtn">Zgłoś jako spam</button>
     <div id="resultMessage" class="message" style="display:none"></div>
@@ -114,6 +114,7 @@
           .catch(err => {
             showMessage("Błąd połączenia (np. CORS, sieć): " + err.message, "error");
             log("Błąd fetch: " + err.message);
+            log("Obiekt błędu: " + JSON.stringify(err, Object.getOwnPropertyNames(err)));
             document.getElementById("reportBtn").disabled = false;
           });
         });
