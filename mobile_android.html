@@ -1,60 +1,99 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8">
-  <title>Zgłoś spam</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zgłoś Spam | Ratels Security</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 2em; }
-    label { display: block; margin-top: 1em; }
-    input, textarea { width: 100%; padding: 0.5em; margin-top: 0.2em; }
-    button { margin-top: 1em; padding: 0.7em 1.5em; }
-    .success { color: green; }
-    .error { color: red; }
+    body { font-family: Arial, sans-serif; background: #f7f7f7; margin: 0; padding: 0; }
+    .container { max-width: 500px; margin: 40px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #0001; padding: 24px; }
+    h1 { font-size: 1.5em; }
+    .message { margin: 16px 0; padding: 12px; border-radius: 4px; }
+    .success { background: #e6ffe6; color: #1a7f1a; }
+    .warning { background: #fffbe6; color: #b38f00; }
+    textarea { width: 100%; min-height: 120px; margin-top: 8px; font-size: 1em; }
+    button { margin-top: 12px; padding: 8px 16px; font-size: 1em; border-radius: 4px; border: none; background: #0078d4; color: #fff; cursor: pointer; }
+    button:active { background: #005fa3; }
+    label { display: block; margin-top: 12px; }
   </style>
 </head>
 <body>
-  <h2>Zgłoś spam</h2>
-  <form id="spamForm">
-    <label>
-      Adres nadawcy:
-      <input type="email" name="sender" required>
+  <div class="container">
+    <h1>Zgłoś spam</h1>
+    <p>Kliknij przycisk poniżej, aby przygotować zgłoszenie spamu. Jeśli nie otworzy się Outlook lub klient poczty, skopiuj poniższy tekst i wyślij ręcznie na <b>tomaszciszewski01@gmail.com</b>.</p>
+    <button id="reportBtn">Zgłoś jako spam</button>
+    <div id="resultMessage" class="message" style="display:none"></div>
+    <label id="copyLabel" style="display:none;">
+      <b>Treść do skopiowania:</b>
+      <textarea id="copyBox" readonly></textarea>
+      <button id="copyBtn" type="button">Kopiuj do schowka</button>
     </label>
-    <label>
-      Temat wiadomości:
-      <input type="text" name="subject" required>
-    </label>
-    <label>
-      Treść wiadomości:
-      <textarea name="body" rows="5" required></textarea>
-    </label>
-    <button type="submit">Zgłoś</button>
-  </form>
-  <div id="result"></div>
+  </div>
   <script>
-    document.getElementById('spamForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      const form = e.target;
-      const data = {
-        sender: form.sender.value,
-        subject: form.subject.value,
-        body: form.body.value
-      };
-      try {
-        const res = await fetch('http://51.38.204.119:3000/report-spam', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
-        if (res.ok) {
-          document.getElementById('result').innerHTML = '<p class="success">Zgłoszenie wysłane!</p>';
-          form.reset();
-        } else {
-          document.getElementById('result').innerHTML = '<p class="error">Błąd podczas wysyłania zgłoszenia.</p>';
-        }
-      } catch (err) {
-        document.getElementById('result').innerHTML = '<p class="error">Błąd sieci: ' + err.message + '</p>';
-      }
-    });
+    // Przykładowe dane - w realnej wtyczce pobierz je z Office.js
+    const data = {
+      subject: "Przykładowy temat",
+      sender: "oszust@phishing.com",
+      receivedTime: "2024-06-01 12:34",
+      messageId: "<1234@phishing.com>"
+    };
+    const cleaned = "To jest przykładowa treść podejrzanej wiadomości. Kliknij w link: http://phishing.com";
+    const links = ["http://phishing.com"];
+
+    function showMessage(text, type = 'success') {
+      const div = document.getElementById("resultMessage");
+      div.textContent = text;
+      div.className = 'message ' + type;
+      div.style.display = "block";
+    }
+
+    function openMailtoWithFallback(mailtoUrl, fallbackCallback) {
+      // Spróbuj otworzyć mailto
+      const a = document.createElement("a");
+      a.href = mailtoUrl;
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      // Po 2 sekundach wywołaj fallback
+      setTimeout(fallbackCallback, 2000);
+    }
+
+    function sendSpamReportMail() {
+      const subjectEncoded = encodeURIComponent("SPAM: " + data.subject);
+      const plainTextBody = [
+        "Zgłoszenie spamu - szczegóły wiadomości:",
+        "",
+        `Temat: ${data.subject}`,
+        `Nadawca: ${data.sender}`,
+        `Data otrzymania: ${data.receivedTime}`,
+        `ID wiadomości: ${data.messageId}`,
+        "",
+        "--- Treść wiadomości ---",
+        cleaned,
+        "--- Koniec treści ---",
+        "",
+        links.length > 0 ? "Wiadomość zawierała następujące linki:" : "Nie znaleziono linków w treści wiadomości.",
+        ...links.map(link => "- " + link),
+        "",
+        "Dziękujemy za pomoc w utrzymaniu bezpieczeństwa."
+      ].join("\n");
+      const bodyMailtoEncoded = encodeURIComponent(plainTextBody);
+      const mailtoUrl = `mailto:tomaszciszewski01@gmail.com?subject=${subjectEncoded}&body=${bodyMailtoEncoded}`;
+      openMailtoWithFallback(mailtoUrl, function() {
+        showMessage("Jeśli nie otworzył się klient poczty, skopiuj poniższy tekst i wyślij ręcznie na tomaszciszewski01@gmail.com.", "warning");
+        document.getElementById("copyLabel").style.display = "block";
+        document.getElementById("copyBox").value = plainTextBody;
+      });
+    }
+
+    document.getElementById("reportBtn").onclick = sendSpamReportMail;
+    document.getElementById("copyBtn").onclick = function() {
+      const copyBox = document.getElementById("copyBox");
+      copyBox.select();
+      document.execCommand("copy");
+      showMessage("Skopiowano do schowka!", "success");
+    };
   </script>
 </body>
 </html>
