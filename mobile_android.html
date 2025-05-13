@@ -54,11 +54,8 @@
                         Dziękujemy za zgłoszenie spamu!
                     `;
 
-                    Office.context.mailbox.displayNewMessageForm({
-                        toRecipients: ['tomaszciszewski01@gmail.com'],
-                        subject: 'Spam Report - Message Details',
-                        htmlBody: emailBody.replace(/\n/g, '<br>')
-                    });
+                    const mailtoLink = `mailto:tomaszciszewski01@gmail.com?subject=${encodeURIComponent('Spam Report - Message Details')}&body=${encodeURIComponent(emailBody)}`;
+                    window.location.href = mailtoLink;
                 }
             });
         }
