@@ -6,83 +6,163 @@
   <title>Zgłoś Spam | Ratels Security</title>
   <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; background: #f7f7f7; margin: 0; padding: 0; }
-    .container { max-width: 500px; margin: 40px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #0001; padding: 24px; }
-    h1 { font-size: 1.5em; }
-    .message { margin: 16px 0; padding: 12px; border-radius: 4px; }
-    .success { background: #e6ffe6; color: #1a7f1a; }
-    .error { background: #ffe6e6; color: #a11a1a; }
-    .log { background: #f0f0f0; color: #333; font-size: 0.95em; margin-top: 10px; padding: 8px; border-radius: 4px; max-height: 300px; overflow-y: auto; }
-    .copy-btn { margin-top: 8px; padding: 6px 14px; font-size: 0.95em; border-radius: 4px; border: none; background: #0078d4; color: #fff; cursor: pointer; }
-    .copy-btn:active { background: #005fa3; }
+    body { 
+      font-family: Arial, sans-serif; 
+      background: #f7f7f7; 
+      margin: 0; 
+      padding: 0; 
+    }
+    .container { 
+      max-width: 500px; 
+      margin: 40px auto; 
+      background: #fff; 
+      border-radius: 8px; 
+      box-shadow: 0 2px 8px #0001; 
+      padding: 24px; 
+      text-align: center;
+    }
+    h1 { 
+      font-size: 1.5em;
+      margin-bottom: 16px;
+    }
+    .button {
+      background-color: #0078d4;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .button:hover {
+      background-color: #005fa3;
+    }
+    .button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+    .message { 
+      margin: 16px 0; 
+      padding: 12px; 
+      border-radius: 4px; 
+      display: none;
+    }
+    .message.show {
+      display: block;
+      animation: fadeIn 0.5s;
+    }
+    .success { 
+      background: #e6ffe6; 
+      color: #1a7f1a; 
+    }
+    .error { 
+      background: #ffe6e6; 
+      color: #a11a1a; 
+    }
+    .warning {
+      background: #fff3cd;
+      color: #856404;
+    }
+    .loading {
+      display: none;
+      margin: 16px 0;
+      font-style: italic;
+      color: #666;
+    }
+    .logo-container {
+      margin-bottom: 24px;
+    }
+    .logo-container img {
+      max-width: 150px;
+      height: auto;
+    }
+    .lang-switcher {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+    }
+    .footer {
+      margin-top: 32px;
+      font-size: 0.8em;
+      color: #666;
+    }
+    .footer a {
+      color: #0078d4;
+      text-decoration: none;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Zgłoś spam - https</h1>
-    <p>Kliknij przycisk, aby zgłosić podejrzaną wiadomość do zespołu bezpieczeństwa.</p>
-    <button id="reportBtn">Zgłoś jako spam</button>
-    <div id="resultMessage" class="message" style="display:none"></div>
-    <div id="logBox" class="log" style="display:none"></div>
-    <button id="copyLogBtn" class="copy-btn" style="display:none;">Kopiuj logi do schowka</button>
+  <div class="lang-switcher">
+    <a href="mobile.html" aria-label="Polski"><img alt="PL" src="https://flagcdn.com/pl.svg" style="margin-right: 6px; vertical-align: middle;" width="24"/></a>
+    <a href="mobileeng.html" aria-label="English"><img alt="EN" src="https://flagcdn.com/gb.svg" style="vertical-align: middle;" width="24"/></a>
   </div>
+
+  <div class="container">
+    <div class="logo-container">
+      <a href="https://ratels.pl" target="_blank" aria-label="Strona główna Ratels">
+        <img src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg" alt="Logo Ratels">
+      </a>
+    </div>
+    <h1>Wykryto podejrzaną wiadomość?</h1>
+    <p>Kliknij przycisk poniżej, aby przygotować zgłoszenie dla zespołu bezpieczeństwa. System automatycznie zbierze informacje o wiadomości.</p>
+    <button class="button" id="reportBtn">Zgłoś jako spam</button>
+    
+    <div id="loadingIndicator" class="loading">Analizowanie wiadomości....</div>
+    <div id="resultMessage" class="message"></div>
+    
+    <div class="footer">
+      <p>© 2025 Ratels Security • <a href="https://ratels.pl/polityka-prywatnosci/" target="_blank">Polityka prywatności</a></p>
+    </div>
+  </div>
+
   <script>
     function showMessage(text, type = 'success') {
       const div = document.getElementById("resultMessage");
       div.textContent = text;
       div.className = 'message ' + type;
-      div.style.display = "block";
+      div.classList.add('show');
+      
+      // Automatyczne ukrycie po 8 sekundach
+      setTimeout(() => {
+        div.classList.remove('show');
+      }, 8000);
     }
 
-    function log(text) {
-      const logBox = document.getElementById("logBox");
-      logBox.style.display = "block";
-      logBox.textContent += text + "\n";
-      logBox.scrollTop = logBox.scrollHeight;
-      // Pokaż przycisk kopiowania, jeśli są logi
-      document.getElementById("copyLogBtn").style.display = "inline-block";
-      // Dodatkowo log do konsoli
-      console.log(text);
-    }
-
-    document.getElementById("copyLogBtn").onclick = function() {
-      const logBox = document.getElementById("logBox");
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(logBox.textContent)
-          .then(() => showMessage("Logi skopiowane do schowka!", "success"))
-          .catch(() => showMessage("Nie udało się skopiować logów.", "error"));
-      } else {
-        // fallback dla starszych przeglądarek
-        const textarea = document.createElement("textarea");
-        textarea.value = logBox.textContent;
-        document.body.appendChild(textarea);
-        textarea.select();
-        try {
-          document.execCommand('copy');
-          showMessage("Logi skopiowane do schowka!", "success");
-        } catch (e) {
-          showMessage("Nie udało się skopiować logów.", "error");
+    function saveReportedMessage(messageId) {
+      try {
+        const reportedMessages = JSON.parse(localStorage.getItem('reportedSpamMessages') || '[]');
+        if (!reportedMessages.includes(messageId)) {
+          reportedMessages.push(messageId);
+          localStorage.setItem('reportedSpamMessages', JSON.stringify(reportedMessages));
+          return false;
         }
-        document.body.removeChild(textarea);
+        return true;
+      } catch (e) {
+        console.error("Błąd historii zgłoszeń:", e);
+        return false;
       }
-    };
+    }
 
     Office.onReady(() => {
       document.getElementById("reportBtn").addEventListener("click", () => {
-        showMessage("Wysyłanie zgłoszenia...", "success");
+        const loading = document.getElementById("loadingIndicator");
+        loading.style.display = "block";
         document.getElementById("reportBtn").disabled = true;
-        document.getElementById("logBox").textContent = ""; // wyczyść logi
-        document.getElementById("copyLogBtn").style.display = "none";
 
         const item = Office.context.mailbox.item;
         if (!item) {
-          showMessage("Nie można pobrać szczegółów wiadomości.", "error");
-          log("Brak obiektu item w Office.context.mailbox");
+          showMessage("Nie można pobrać szczegółów wiadomości. Spróbuj ponownie.", "error");
+          loading.style.display = "none";
           document.getElementById("reportBtn").disabled = false;
           return;
         }
 
-        // Pobierz podstawowe dane
         const data = {
           subject: item.subject || "(brak tematu)",
           sender: item.from ? (item.from.emailAddress || item.from.displayName) : "(nieznany nadawca)",
@@ -90,26 +170,24 @@
           messageId: item.internetMessageId || "(brak ID)"
         };
 
-        log("Pobrane dane z maila:");
-        log(JSON.stringify(data, null, 2));
+        if (saveReportedMessage(data.messageId)) {
+          showMessage("Ta wiadomość została już wcześniej zgłoszona.", "warning");
+          loading.style.display = "none";
+          document.getElementById("reportBtn").disabled = false;
+          return;
+        }
 
         // Pobierz treść (asynchronicznie)
         item.body.getAsync(Office.CoercionType.Text, function(result) {
           let cleaned = "(brak treści)";
           if (result.status === Office.AsyncResultStatus.Succeeded && result.value) {
             cleaned = result.value;
-            log("Pobrano treść wiadomości.");
-          } else {
-            log("Nie udało się pobrać treści wiadomości: " + result.status);
           }
 
           const payload = {
             ...data,
             body: cleaned
           };
-
-          log("Payload do wysłania:");
-          log(JSON.stringify(payload, null, 2));
 
           // Wyślij dane do backendu
           fetch('https://spam.cezz.pl/report-spam', {
@@ -118,29 +196,27 @@
             body: JSON.stringify(payload)
           })
           .then(async res => {
-            log("Odpowiedź HTTP status: " + res.status);
             let responseText = await res.text();
-            log("Odpowiedź serwera: " + responseText);
             let result;
             try {
               result = JSON.parse(responseText);
             } catch (e) {
-              showMessage("Błąd: nieprawidłowa odpowiedź serwera (status: " + res.status + "): " + responseText, "error");
-              log("Błąd parsowania odpowiedzi JSON: " + e.message);
+              showMessage("Błąd: nieprawidłowa odpowiedź serwera (status: " + res.status + ")", "error");
+              loading.style.display = "none";
               document.getElementById("reportBtn").disabled = false;
               return;
             }
             if (res.ok && result.success) {
-              showMessage("Zgłoszono!", "success");
+              showMessage("Zgłoszono pomyślnie!", "success");
             } else {
               showMessage("Błąd: " + (result.error || responseText), "error");
             }
+            loading.style.display = "none";
             document.getElementById("reportBtn").disabled = false;
           })
           .catch(err => {
-            showMessage("Błąd połączenia (np. CORS, sieć): " + err.message, "error");
-            log("Błąd fetch: " + err.message);
-            log("Obiekt błędu: " + JSON.stringify(err, Object.getOwnPropertyNames(err)));
+            showMessage("Błąd połączenia: " + err.message, "error");
+            loading.style.display = "none";
             document.getElementById("reportBtn").disabled = false;
           });
         });
