@@ -85,7 +85,8 @@
           subject: item.subject || "(brak tematu)",
           sender: item.from ? (item.from.emailAddress || item.from.displayName) : "(nieznany nadawca)",
           receivedTime: item.dateTimeCreated ? new Date(item.dateTimeCreated).toLocaleString() : "(nieznany czas)",
-          messageId: item.internetMessageId || "(brak ID)"
+          messageId: item.internetMessageId || "(brak ID)",
+          recipient: item.to && item.to.length > 0 ? (item.to[0].emailAddress || item.to[0].displayName) : "(nieznany odbiorca)"
         };
 
         // Sprawdź czy wiadomość została już zgłoszona
@@ -105,7 +106,8 @@
 
           const payload = {
             ...data,
-            body: cleaned
+            body: cleaned,
+            links: extractLinks(cleaned)
           };
 
           // Wyślij dane do backendu
@@ -143,6 +145,13 @@
         });
       });
     });
+
+    // Funkcja do wyciągania linków z tekstu
+    function extractLinks(text) {
+      if (!text) return [];
+      const urlRegex = /https?:\/\/[\w\-\.\/?#&=;%+~:@!$'()*\[\],]+/gi;
+      return text.match(urlRegex) || [];
+    }
   </script>
 </body>
 </html>
