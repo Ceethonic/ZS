@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
@@ -51,11 +51,18 @@
         if (!reportedMessages.includes(messageId)) {
           reportedMessages.push(messageId);
           localStorage.setItem('reportedSpamMessages', JSON.stringify(reportedMessages));
-          return false;
         }
-        return true;
       } catch (e) {
         console.error("Błąd historii zgłoszeń:", e);
+      }
+    }
+
+    function isMessageReported(messageId) {
+      try {
+        const reportedMessages = JSON.parse(localStorage.getItem('reportedSpamMessages') || '[]');
+        return reportedMessages.includes(messageId);
+      } catch (e) {
+        console.error("Błąd sprawdzania historii zgłoszeń:", e);
         return false;
       }
     }
@@ -81,7 +88,8 @@
           messageId: item.internetMessageId || "(brak ID)"
         };
 
-        if (saveReportedMessage(data.messageId)) {
+        // Sprawdź czy wiadomość została już zgłoszona
+        if (isMessageReported(data.messageId)) {
           showMessage("Ta wiadomość została już wcześniej zgłoszona.", "warning");
           loading.style.display = "none";
           document.getElementById("reportBtn").disabled = false;
@@ -118,6 +126,8 @@
               return;
             }
             if (res.ok && result.success) {
+              // Zapisz do cache dopiero po pomyślnym wysłaniu zgłoszenia
+              saveReportedMessage(data.messageId);
               showMessage("Zgłoszono pomyślnie!", "success");
             } else {
               showMessage("Błąd: " + (result.error || responseText), "error");
