@@ -92,7 +92,7 @@
         // Pobierz załączniki (jeśli są)
         let attachments = [];
         if (item.attachments && Array.isArray(item.attachments) && item.attachments.length > 0) {
-          attachments = item.attachments.map(att => att.name || '(bez nazwy)');
+          attachments = item.attachments.map(att => att.name || att.fileName || '(bez nazwy)');
         }
 
         // Sprawdź czy wiadomość została już zgłoszona
