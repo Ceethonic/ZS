@@ -19,7 +19,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>Zgłoś spamAAA</h1>
+    <h1>Zgłoś spam - https</h1>
     <p>Kliknij przycisk, aby zgłosić podejrzaną wiadomość do zespołu bezpieczeństwa.</p>
     <button id="reportBtn">Zgłoś jako spam</button>
     <div id="resultMessage" class="message" style="display:none"></div>
@@ -112,7 +112,7 @@
           log(JSON.stringify(payload, null, 2));
 
           // Wyślij dane do backendu
-          fetch('http://51.38.204.119:3000/report-spam', {
+          fetch('https://spam.cezz.pl/report-spam', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(payload)
