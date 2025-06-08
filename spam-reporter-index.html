@@ -61,85 +61,90 @@
     }
 
     Office.onReady(() => {
-      document.getElementById("reportBtn").addEventListener("click", () => {
+      document.getElementById("reportBtn").addEventListener("click", async () => {
         const loading = document.getElementById("loadingIndicator");
-        loading.style.display = "block";
-        document.getElementById("reportBtn").disabled = true;
+        const reportBtn = document.getElementById("reportBtn");
+        
+        try {
+          loading.style.display = "block";
+          reportBtn.disabled = true;
 
-        const item = Office.context.mailbox.item;
-        if (!item) {
-          showMessage("Nie można pobrać szczegółów wiadomości. Spróbuj ponownie.", "error");
-          loading.style.display = "none";
-          document.getElementById("reportBtn").disabled = false;
-          return;
-        }
-
-        const data = {
-          subject: item.subject || "(brak tematu)",
-          sender: item.from ? (item.from.emailAddress || item.from.displayName) : "(nieznany nadawca)",
-          receivedTime: item.dateTimeCreated ? new Date(item.dateTimeCreated).toLocaleString() : "(nieznany czas)",
-          messageId: item.internetMessageId || "(brak ID)"
-        };
-
-        if (saveReportedMessage(data.messageId)) {
-          showMessage("Ta wiadomość została już wcześniej zgłoszona.", "warning");
-          loading.style.display = "none";
-          document.getElementById("reportBtn").disabled = false;
-          return;
-        }
-
-        const reportBody = [
-          "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;'>",
-          "<div style='background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;'>",
-          "<h2 style='color: #2c3e50; margin-top: 0; border-bottom: 2px solid #3498db; padding-bottom: 10px;'>Zgłoszenie wiadomości spam</h2>",
-          "<p style='color: #34495e; line-height: 1.6;'>Poniżej znajdują się szczegóły zgłoszonej wiadomości:</p>",
-          "</div>",
-          "<div style='background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>",
-          "<table style='width:100%; border-collapse: collapse; margin-bottom: 20px;'>",
-          `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:bold; color: #2c3e50;'>Temat:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${data.subject}</td></tr>`,
-          `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:bold; color: #2c3e50;'>Nadawca:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${data.sender}</td></tr>`,
-          `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:bold; color: #2c3e50;'>Data otrzymania:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${data.receivedTime}</td></tr>`,
-          "</table>",
-          "<p style='color: #34495e; margin-bottom: 20px;'>Wiadomość została dołączona jako załącznik.</p>",
-          "<div style='background-color: #f8f9fa; padding: 15px; border-radius: 6px; margin-top: 20px;'>",
-          "<p style='font-size:13px; color:#666; margin: 0;'>Dziękujemy za czujność i pomoc w utrzymaniu bezpieczeństwa naszej sieci.</p>",
-          "</div>",
-          "</div>",
-          "</div>"
-        ].join("");
-
-        // Create and send the email automatically
-        const message = {
-          toRecipients: ['tomaszciszewski01@gmail.com'],
-          subject: "SPAM: " + data.subject,
-          htmlBody: reportBody,
-          attachments: [
-            {
-              type: Office.MailboxEnums.AttachmentType.Item,
-              itemId: item.itemId,
-              name: "wiadomosc_spam.eml"
-            }
-          ]
-        };
-
-        Office.context.mailbox.item.sendMail(message, {
-          asyncContext: null
-        }, (result) => {
-          if (result.status === Office.AsyncResultStatus.Succeeded) {
-            showMessage("Zgłoszenie zostało wysłane pomyślnie.", "success");
-          } else {
-            showMessage("Wystąpił błąd podczas wysyłania zgłoszenia.", "error");
+          const item = Office.context.mailbox.item;
+          if (!item) {
+            throw new Error("Nie można pobrać szczegółów wiadomości.");
           }
-          loading.style.display = "none";
-          document.getElementById("reportBtn").disabled = false;
 
-          // Close the panel after a short delay
+          const data = {
+            subject: item.subject || "(brak tematu)",
+            sender: item.from ? (item.from.emailAddress || item.from.displayName) : "(nieznany nadawca)",
+            receivedTime: item.dateTimeCreated ? new Date(item.dateTimeCreated).toLocaleString() : "(nieznany czas)",
+            messageId: item.internetMessageId || "(brak ID)"
+          };
+
+          if (saveReportedMessage(data.messageId)) {
+            showMessage("Ta wiadomość została już wcześniej zgłoszona.", "warning");
+            return;
+          }
+
+          const reportBody = [
+            "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;'>",
+            "<div style='background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;'>",
+            "<h2 style='color: #2c3e50; margin-top: 0; border-bottom: 2px solid #3498db; padding-bottom: 10px;'>Zgłoszenie wiadomości spam</h2>",
+            "<p style='color: #34495e; line-height: 1.6;'>Poniżej znajdują się szczegóły zgłoszonej wiadomości:</p>",
+            "</div>",
+            "<div style='background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>",
+            "<table style='width:100%; border-collapse: collapse; margin-bottom: 20px;'>",
+            `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:bold; color: #2c3e50;'>Temat:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${data.subject}</td></tr>`,
+            `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:bold; color: #2c3e50;'>Nadawca:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${data.sender}</td></tr>`,
+            `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:bold; color: #2c3e50;'>Data otrzymania:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${data.receivedTime}</td></tr>`,
+            "</table>",
+            "<p style='color: #34495e; margin-bottom: 20px;'>Wiadomość została dołączona jako załącznik.</p>",
+            "<div style='background-color: #f8f9fa; padding: 15px; border-radius: 6px; margin-top: 20px;'>",
+            "<p style='font-size:13px; color:#666; margin: 0;'>Dziękujemy za czujność i pomoc w utrzymaniu bezpieczeństwa naszej sieci.</p>",
+            "</div>",
+            "</div>",
+            "</div>"
+          ].join("");
+
+          const message = {
+            toRecipients: ['tomaszciszewski01@gmail.com'],
+            subject: "SPAM: " + data.subject,
+            htmlBody: reportBody,
+            attachments: [
+              {
+                type: Office.MailboxEnums.AttachmentType.Item,
+                itemId: item.itemId,
+                name: "wiadomosc_spam.eml"
+              }
+            ]
+          };
+
+          await new Promise((resolve, reject) => {
+            Office.context.mailbox.item.sendMail(message, {
+              asyncContext: null
+            }, (result) => {
+              if (result.status === Office.AsyncResultStatus.Succeeded) {
+                showMessage("Zgłoszenie zostało wysłane pomyślnie.", "success");
+                resolve();
+              } else {
+                reject(new Error("Wystąpił błąd podczas wysyłania zgłoszenia."));
+              }
+            });
+          });
+
+          // Zamknij panel po krótkim opóźnieniu
           setTimeout(() => {
             if (Office.context.ui && Office.context.ui.closeContainer) {
               Office.context.ui.closeContainer();
             }
           }, 4000);
-        });
+
+        } catch (error) {
+          showMessage(error.message || "Wystąpił nieoczekiwany błąd.", "error");
+        } finally {
+          loading.style.display = "none";
+          reportBtn.disabled = false;
+        }
       });
     });
   </script>
