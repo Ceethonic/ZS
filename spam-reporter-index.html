@@ -61,6 +61,111 @@
       }, 8000);
     }
 
+    // Funkcja do wyciągania Message-ID z nagłówków
+    function getMessageIdFromHeaders(item) {
+      return new Promise((resolve) => {
+        try {
+          // Spróbuj pobrać nagłówki internetowe
+          item.internetHeaders.getAsync((result) => {
+            let messageId = "(brak Message-ID)";
+            
+            if (result.status === Office.AsyncResultStatus.Succeeded && result.value) {
+              console.log('DEBUG: Pobrano nagłówki internetowe');
+              
+              // Szukaj Message-ID w nagłówkach
+              for (let header of result.value) {
+                if (header.name && header.name.toLowerCase() === 'message-id') {
+                  messageId = header.value || "(pusty Message-ID)";
+                  console.log('DEBUG: Znaleziono Message-ID:', messageId);
+                  break;
+                }
+              }
+              
+              if (messageId === "(brak Message-ID)") {
+                console.log('DEBUG: Nie znaleziono Message-ID w nagłówkach');
+                // Fallback do item.internetMessageId jeśli dostępny
+                if (item.internetMessageId) {
+                  messageId = item.internetMessageId;
+                  console.log('DEBUG: Używam fallback internetMessageId:', messageId);
+                }
+              }
+            } else {
+              console.log('DEBUG: Błąd pobierania nagłówków lub brak dostępu:', result.error);
+              // Fallback do dostępnych właściwości
+              if (item.internetMessageId) {
+                messageId = item.internetMessageId;
+              } else if (item.itemId) {
+                messageId = `itemId:${item.itemId}`;
+              } else {
+                messageId = `generated:${Date.now()}`;
+              }
+            }
+            
+            resolve(messageId);
+          });
+        } catch (error) {
+          console.error('DEBUG: Błąd podczas pobierania Message-ID:', error);
+          // Fallback ID
+          const fallbackId = item.internetMessageId || item.itemId || `error:${Date.now()}`;
+          resolve(fallbackId);
+        }
+      });
+    }
+
+    // Funkcja do wyciągania niestandardowych nagłówków X-* (bez X-MS-Exchange*)
+    function getCustomHeaders(item) {
+      return new Promise((resolve) => {
+        try {
+          item.internetHeaders.getAsync((result) => {
+            const customHeaders = [];
+            
+            if (result.status === Office.AsyncResultStatus.Succeeded && result.value) {
+              console.log('DEBUG: Analizuję nagłówki dla X-*');
+              
+              for (let header of result.value) {
+                if (header.name && header.name.startsWith('X-') && 
+                    !header.name.toLowerCase().startsWith('x-ms-exchange')) {
+                  customHeaders.push({
+                    name: header.name,
+                    value: header.value || '(brak wartości)'
+                  });
+                  console.log('DEBUG: Znaleziono niestandardowy nagłówek:', header.name);
+                }
+              }
+            } else {
+              console.log('DEBUG: Nie udało się pobrać nagłówków dla X-*');
+            }
+            
+            resolve(customHeaders);
+          });
+        } catch (error) {
+          console.error('DEBUG: Błąd podczas pobierania niestandardowych nagłówków:', error);
+          resolve([]);
+        }
+      });
+    }
+
+    // Funkcja do pobierania wszystkich nagłówków do debugowania
+    function debugAllHeaders(item) {
+      return new Promise((resolve) => {
+        try {
+          item.internetHeaders.getAsync((result) => {
+            if (result.status === Office.AsyncResultStatus.Succeeded && result.value) {
+              console.log('=== DEBUG: Wszystkie nagłówki ===');
+              result.value.forEach(header => {
+                console.log(`${header.name}: ${header.value}`);
+              });
+              console.log('=== KONIEC DEBUG NAGŁÓWKÓW ===');
+            }
+            resolve();
+          });
+        } catch (error) {
+          console.error('DEBUG: Błąd debugowania nagłówków:', error);
+          resolve();
+        }
+      });
+    }
+
     Office.onReady(() => {
       document.getElementById("reportBtn").addEventListener("click", async () => {
         const loading = document.getElementById("loadingIndicator");
@@ -72,22 +177,34 @@
             throw new Error("Nie można pobrać szczegółów wiadomości.");
           }
 
-          // Najpierw sprawdzamy ID wiadomości
-          const messageId = item.internetMessageId || item.id || "(brak ID)";
-          if (saveReportedMessage(messageId)) {
-            showMessage("Ta wiadomość została już wcześniej zgłoszona.", "warning");
-            return;
-          }
-
-          // Dopiero po walidacji pokazujemy loading i rozpoczynamy analizę
           loading.style.display = "block";
           reportBtn.disabled = true;
+
+          // DEBUG: Pokaż wszystkie nagłówki
+          await debugAllHeaders(item);
+
+          // Pobierz Message-ID z nagłówków
+          const messageId = await getMessageIdFromHeaders(item);
+          console.log('DEBUG: Finalne Message-ID:', messageId);
+
+          // Pobierz niestandardowe nagłówki X-*
+          const customHeaders = await getCustomHeaders(item);
+          console.log('DEBUG: Niestandardowe nagłówki:', customHeaders);
+
+          // Sprawdź czy wiadomość była już zgłaszana
+          if (saveReportedMessage(messageId)) {
+            showMessage("Ta wiadomość została już wcześniej zgłoszona.", "warning");
+            loading.style.display = "none";
+            reportBtn.disabled = false;
+            return;
+          }
 
           const data = {
             subject: item.subject || "(brak tematu)",
             sender: item.from ? (item.from.emailAddress || item.from.displayName) : "(nieznany nadawca)",
             receivedTime: item.dateTimeCreated ? new Date(item.dateTimeCreated).toLocaleString() : "(nieznany czas)",
             messageId: messageId,
+            customHeaders: customHeaders,
             hasAttachments: item.attachments && item.attachments.length > 0,
             attachmentCount: item.attachments ? item.attachments.length : 0,
             importance: item.importance || "normal",
@@ -96,6 +213,7 @@
             bodyPreview: item.bodyPreview || "(brak podglądu)",
             reporter: Office.context.mailbox.userProfile.emailAddress || 'nieznany zgłaszający'
           };
+
           console.log('DEBUG: messageId:', data.messageId, 'bodyPreview:', data.bodyPreview);
 
           // Pobierz treść wiadomości
@@ -187,15 +305,27 @@
               "</table>",
               "</div>",
               
-              // Sekcja metadanych
+              // Sekcja metadanych z Message-ID
               "<div style='margin-bottom: 24px;'>",
               "<h3 style='color: #000000 !important; margin: 0 0 16px 0; font-size: 18px; font-weight: bold;'>🔍 Metadane wiadomości</h3>",
               "<table style='width:100%; border-collapse: collapse; background-color: #ffffff !important;'>",
-              `<tr><td style='padding:12px; border-bottom:2px solid #e9ecef; font-weight:bold; color: #000000 !important; width: 30%; background-color: #f8f9fa !important;'>ID wiadomości:</td><td style='padding:12px; border-bottom:2px solid #e9ecef; color: #333333 !important; font-family: Courier, monospace; background-color: #ffffff !important;'>${data.messageId}</td></tr>`,
+              `<tr><td style='padding:12px; border-bottom:2px solid #e9ecef; font-weight:bold; color: #000000 !important; width: 30%; background-color: #f8f9fa !important;'>Message-ID:</td><td style='padding:12px; border-bottom:2px solid #e9ecef; color: #333333 !important; font-family: Courier, monospace; background-color: #ffffff !important; word-break: break-all;'>${data.messageId}</td></tr>`,
               `<tr><td style='padding:12px; border-bottom:2px solid #e9ecef; font-weight:bold; color: #000000 !important; background-color: #f8f9fa !important;'>ID konwersacji:</td><td style='padding:12px; border-bottom:2px solid #e9ecef; color: #333333 !important; font-family: Courier, monospace; background-color: #ffffff !important;'>${data.conversationId}</td></tr>`,
               `<tr><td style='padding:12px; border-bottom:2px solid #e9ecef; font-weight:bold; color: #000000 !important; background-color: #f8f9fa !important;'>Priorytet:</td><td style='padding:12px; border-bottom:2px solid #e9ecef; color: #333333 !important; background-color: #ffffff !important;'>${data.importance}</td></tr>`,
               "</table>",
               "</div>",
+              
+              // Sekcja niestandardowych nagłówków X-*
+              data.customHeaders.length > 0 ? [
+                "<div style='margin-bottom: 24px;'>",
+                "<h3 style='color: #000000 !important; margin: 0 0 16px 0; font-size: 18px; font-weight: bold;'>🏷️ Niestandardowe nagłówki (X-*)</h3>",
+                "<table style='width:100%; border-collapse: collapse; background-color: #ffffff !important;'>",
+                ...data.customHeaders.map(header => 
+                  `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:bold; color: #000000 !important; width: 30%; background-color: #f8f9fa !important; font-family: Courier, monospace; font-size: 0.9em;'>${header.name}:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #333333 !important; background-color: #ffffff !important; font-family: Courier, monospace; font-size: 0.9em; word-break: break-all;'>${header.value}</td></tr>`
+                ),
+                "</table>",
+                "</div>"
+              ].join("") : "",
               
               // Sekcja załączników
               attachments.length > 0 ? [
