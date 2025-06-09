@@ -20,7 +20,7 @@
         <img alt="Logo Ratels" src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg"/>
       </a>
     </div>
-    <h1>Wykryto podejrzaną wiadomość??</h1>
+    <h1>Wykryto podejrzaną wiadomość?</h1>
     <p>Kliknij przycisk poniżej, aby przygotować zgłoszenie dla zespołu bezpieczeństwa. System automatycznie dołączy oryginalną wiadomość jako załącznik.</p>
     <button class="button" id="reportBtn">Zgłoś jako spam</button>
     
@@ -169,41 +169,41 @@
             })) : [];
 
             const reportBody = [
-              "<div style='font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 24px;'>",
-              "<div style='background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 24px; border-radius: 12px; margin-bottom: 24px;'>",
-              "<h2 style='color: #1a1a1a; margin: 0 0 16px 0; font-size: 24px; font-weight: 600;'>🚨 Zgłoszenie wiadomości spam</h2>",
-              "<p style='color: #4a4a4a; line-height: 1.6; margin: 0;'>Szczegółowy raport podejrzanej wiadomości:</p>",
+              "<div style='font-family: Arial, Helvetica, sans-serif !important; max-width: 800px; margin: 0 auto; padding: 24px; background-color: #ffffff !important; color: #000000 !important;'>",
+              "<div style='background-color: #f8f9fa !important; padding: 24px; border-radius: 12px; margin-bottom: 24px; border: 1px solid #e9ecef;'>",
+              "<h2 style='color: #000000 !important; margin: 0 0 16px 0; font-size: 24px; font-weight: bold;'>🚨 Zgłoszenie wiadomości spam</h2>",
+              "<p style='color: #333333 !important; line-height: 1.6; margin: 0;'>Szczegółowy raport podejrzanej wiadomości:</p>",
               "</div>",
               
-              "<div style='background-color: white; padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>",
+              "<div style='background-color: #ffffff !important; padding: 24px; border-radius: 12px; border: 2px solid #e9ecef;'>",
               
               // Sekcja głównych informacji
               "<div style='margin-bottom: 24px;'>",
-              "<h3 style='color: #2c3e50; margin: 0 0 16px 0; font-size: 18px; font-weight: 600;'>📧 Podstawowe informacje</h3>",
-              "<table style='width:100%; border-collapse: collapse;'>",
-              `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:500; color: #2c3e50; width: 30%;'>Temat:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${data.subject}</td></tr>`,
-              `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:500; color: #2c3e50;'>Nadawca:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${data.sender}</td></tr>`,
-              `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:500; color: #2c3e50;'>Data otrzymania:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${data.receivedTime}</td></tr>`,
+              "<h3 style='color: #000000 !important; margin: 0 0 16px 0; font-size: 18px; font-weight: bold;'>📧 Podstawowe informacje</h3>",
+              "<table style='width:100%; border-collapse: collapse; background-color: #ffffff !important;'>",
+              `<tr><td style='padding:12px; border-bottom:2px solid #e9ecef; font-weight:bold; color: #000000 !important; width: 30%; background-color: #f8f9fa !important;'>Temat:</td><td style='padding:12px; border-bottom:2px solid #e9ecef; color: #333333 !important; background-color: #ffffff !important;'>${data.subject}</td></tr>`,
+              `<tr><td style='padding:12px; border-bottom:2px solid #e9ecef; font-weight:bold; color: #000000 !important; background-color: #f8f9fa !important;'>Nadawca:</td><td style='padding:12px; border-bottom:2px solid #e9ecef; color: #333333 !important; background-color: #ffffff !important;'>${data.sender}</td></tr>`,
+              `<tr><td style='padding:12px; border-bottom:2px solid #e9ecef; font-weight:bold; color: #000000 !important; background-color: #f8f9fa !important;'>Data otrzymania:</td><td style='padding:12px; border-bottom:2px solid #e9ecef; color: #333333 !important; background-color: #ffffff !important;'>${data.receivedTime}</td></tr>`,
               "</table>",
               "</div>",
               
               // Sekcja metadanych
               "<div style='margin-bottom: 24px;'>",
-              "<h3 style='color: #2c3e50; margin: 0 0 16px 0; font-size: 18px; font-weight: 600;'>🔍 Metadane wiadomości</h3>",
-              "<table style='width:100%; border-collapse: collapse;'>",
-              `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:500; color: #2c3e50; width: 30%;'>ID wiadomości:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e; font-family: monospace;'>${data.messageId}</td></tr>`,
-              `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:500; color: #2c3e50;'>ID konwersacji:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e; font-family: monospace;'>${data.conversationId}</td></tr>`,
-              `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:500; color: #2c3e50;'>Priorytet:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${data.importance}</td></tr>`,
+              "<h3 style='color: #000000 !important; margin: 0 0 16px 0; font-size: 18px; font-weight: bold;'>🔍 Metadane wiadomości</h3>",
+              "<table style='width:100%; border-collapse: collapse; background-color: #ffffff !important;'>",
+              `<tr><td style='padding:12px; border-bottom:2px solid #e9ecef; font-weight:bold; color: #000000 !important; width: 30%; background-color: #f8f9fa !important;'>ID wiadomości:</td><td style='padding:12px; border-bottom:2px solid #e9ecef; color: #333333 !important; font-family: Courier, monospace; background-color: #ffffff !important;'>${data.messageId}</td></tr>`,
+              `<tr><td style='padding:12px; border-bottom:2px solid #e9ecef; font-weight:bold; color: #000000 !important; background-color: #f8f9fa !important;'>ID konwersacji:</td><td style='padding:12px; border-bottom:2px solid #e9ecef; color: #333333 !important; font-family: Courier, monospace; background-color: #ffffff !important;'>${data.conversationId}</td></tr>`,
+              `<tr><td style='padding:12px; border-bottom:2px solid #e9ecef; font-weight:bold; color: #000000 !important; background-color: #f8f9fa !important;'>Priorytet:</td><td style='padding:12px; border-bottom:2px solid #e9ecef; color: #333333 !important; background-color: #ffffff !important;'>${data.importance}</td></tr>`,
               "</table>",
               "</div>",
               
               // Sekcja załączników
               attachments.length > 0 ? [
                 "<div style='margin-bottom: 24px;'>",
-                "<h3 style='color: #2c3e50; margin: 0 0 16px 0; font-size: 18px; font-weight: 600;'>📎 Załączniki</h3>",
-                "<table style='width:100%; border-collapse: collapse;'>",
+                "<h3 style='color: #000000 !important; margin: 0 0 16px 0; font-size: 18px; font-weight: bold;'>📎 Załączniki</h3>",
+                "<table style='width:100%; border-collapse: collapse; background-color: #ffffff !important;'>",
                 ...attachments.map(att => 
-                  `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${att.name}</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #7f8c8d; font-size: 0.9em;'>${att.size} • ${att.type}</td></tr>`
+                  `<tr><td style='padding:12px; border-bottom:2px solid #e9ecef; color: #333333 !important; background-color: #ffffff !important;'>${att.name}</td><td style='padding:12px; border-bottom:2px solid #e9ecef; color: #666666 !important; font-size: 0.9em; background-color: #ffffff !important;'>${att.size} • ${att.type}</td></tr>`
                 ),
                 "</table>",
                 "</div>"
@@ -212,15 +212,15 @@
               // Sekcja linków
               (safeLinks.length > 0 || suspiciousLinks.length > 0) ? [
                 "<div style='margin-bottom: 24px;'>",
-                "<h3 style='color: #2c3e50; margin: 0 0 16px 0; font-size: 18px; font-weight: 600;'>🔗 Wykryte linki</h3>",
+                "<h3 style='color: #000000 !important; margin: 0 0 16px 0; font-size: 18px; font-weight: bold;'>🔗 Wykryte linki</h3>",
                 
                 // Bezpieczne linki
                 safeLinks.length > 0 ? [
                   "<div style='margin-bottom: 16px;'>",
-                  "<h4 style='color: #27ae60; margin: 0 0 8px 0; font-size: 16px; font-weight: 500;'>✅ Bezpieczne linki</h4>",
-                  "<div style='background: #f0f9f0; padding: 16px; border-radius: 8px; border-left: 4px solid #27ae60;'>",
+                  "<h4 style='color: #008000 !important; margin: 0 0 8px 0; font-size: 16px; font-weight: bold;'>✅ Bezpieczne linki</h4>",
+                  "<div style='background-color: #f0fff0 !important; padding: 16px; border-radius: 8px; border-left: 4px solid #008000;'>",
                   ...safeLinks.map(link => 
-                    `<div style='margin-bottom: 8px;'><a href='${link}' style='color: #27ae60; text-decoration: none; word-break: break-all;'>${link}</a></div>`
+                    `<div style='margin-bottom: 8px; color: #008000 !important;'><a href='${link}' style='color: #008000 !important; text-decoration: underline; word-break: break-all;'>${link}</a></div>`
                   ),
                   "</div>",
                   "</div>"
@@ -229,10 +229,10 @@
                 // Podejrzane linki
                 suspiciousLinks.length > 0 ? [
                   "<div style='margin-bottom: 16px;'>",
-                  "<h4 style='color: #e74c3c; margin: 0 0 8px 0; font-size: 16px; font-weight: 500;'>⚠️ Podejrzane linki</h4>",
-                  "<div style='background: #fdf0ed; padding: 16px; border-radius: 8px; border-left: 4px solid #e74c3c;'>",
+                  "<h4 style='color: #cc0000 !important; margin: 0 0 8px 0; font-size: 16px; font-weight: bold;'>⚠️ Podejrzane linki</h4>",
+                  "<div style='background-color: #fff0f0 !important; padding: 16px; border-radius: 8px; border-left: 4px solid #cc0000;'>",
                   ...suspiciousLinks.map(link => 
-                    `<div style='margin-bottom: 8px;'><a href='${link}' style='color: #e74c3c; text-decoration: none; word-break: break-all;'>${link}</a></div>`
+                    `<div style='margin-bottom: 8px; color: #cc0000 !important;'><a href='${link}' style='color: #cc0000 !important; text-decoration: underline; word-break: break-all;'>${link}</a></div>`
                   ),
                   "</div>",
                   "</div>"
@@ -243,8 +243,8 @@
               
               // Podgląd treści
               "<div style='margin-bottom: 24px;'>",
-              "<h3 style='color: #2c3e50; margin: 0 0 16px 0; font-size: 18px; font-weight: 600;'>📝 Podgląd treści</h3>",
-              "<div style='background: #f8f9fa; padding: 16px; border-radius: 8px; font-family: monospace; white-space: pre-wrap; color: #34495e; font-size: 0.9em;'>",
+              "<h3 style='color: #000000 !important; margin: 0 0 16px 0; font-size: 18px; font-weight: bold;'>📝 Podgląd treści</h3>",
+              "<div style='background-color: #f8f9fa !important; padding: 16px; border-radius: 8px; font-family: Courier, monospace; white-space: pre-wrap; color: #000000 !important; font-size: 14px; border: 2px solid #e9ecef; overflow-wrap: break-word;'>",
               (bodyContent && bodyContent.trim() !== "" && bodyContent !== "(brak treści)") 
                 ? (bodyContent.length > 1000 ? bodyContent.substring(0, 1000) + "\n\n[...treść została skrócona...]" : bodyContent)
                 : "(nie udało się pobrać treści wiadomości)",
@@ -252,9 +252,9 @@
               "</div>",
               
               // Stopka
-              "<div style='margin-top: 32px; padding-top: 24px; border-top: 1px solid #e9ecef; text-align: center; color: #7f8c8d; font-size: 0.9em;'>",
-              "<p style='margin: 0;'>Dziękujemy za czujność i pomoc w utrzymaniu bezpieczeństwa naszej sieci.</p>",
-              "<p style='margin: 8px 0 0 0;'>Wiadomość oryginalna została dołączona jako załącznik EML.</p>",
+              "<div style='margin-top: 32px; padding-top: 24px; border-top: 2px solid #e9ecef; text-align: center; color: #666666 !important; font-size: 0.9em; background-color: #ffffff !important;'>",
+              "<p style='margin: 0; color: #666666 !important;'>Dziękujemy za czujność i pomoc w utrzymaniu bezpieczeństwa naszej sieci.</p>",
+              "<p style='margin: 8px 0 0 0; color: #666666 !important;'>Wiadomość oryginalna została dołączona jako załącznik EML.</p>",
               "</div>",
               
               "</div>",
