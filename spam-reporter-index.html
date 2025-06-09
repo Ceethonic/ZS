@@ -20,7 +20,7 @@
         <img alt="Logo Ratels" src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg"/>
       </a>
     </div>
-    <h1>Wykryto podejrzaną wiadomość??</h1>
+    <h1>Wykryto podejrzaną wiadomość?</h1>
     <p>Kliknij przycisk poniżej, aby przygotować zgłoszenie dla zespołu bezpieczeństwa. System automatycznie dołączy oryginalną wiadomość jako załącznik.</p>
     <button class="button" id="reportBtn">Zgłoś jako spam</button>
     
@@ -196,47 +196,23 @@
             };
 
             // Tworzymy nową wiadomość
-            Office.context.mailbox.item.to.setAsync(message.toRecipients, (result) => {
-              if (result.status === Office.AsyncResultStatus.Succeeded) {
-                Office.context.mailbox.item.subject.setAsync(message.subject, (result) => {
-                  if (result.status === Office.AsyncResultStatus.Succeeded) {
-                    Office.context.mailbox.item.body.setAsync(message.htmlBody, { coercionType: Office.CoercionType.Html }, (result) => {
-                      if (result.status === Office.AsyncResultStatus.Succeeded) {
-                        // Wysyłamy wiadomość
-                        Office.context.mailbox.item.sendAsync((result) => {
-                          if (result.status === Office.AsyncResultStatus.Succeeded) {
-                            showMessage("Zgłoszenie zostało wysłane pomyślnie.", "success");
-                          } else {
-                            showMessage("Wystąpił błąd podczas wysyłania zgłoszenia.", "error");
-                          }
-                          loading.style.display = "none";
-                          reportBtn.disabled = false;
-
-                          // Zamknij panel po krótkim opóźnieniu
-                          setTimeout(() => {
-                            if (Office.context.ui && Office.context.ui.closeContainer) {
-                              Office.context.ui.closeContainer();
-                            }
-                          }, 4000);
-                        });
-                      } else {
-                        showMessage("Wystąpił błąd podczas ustawiania treści wiadomości.", "error");
-                        loading.style.display = "none";
-                        reportBtn.disabled = false;
-                      }
-                    });
-                  } else {
-                    showMessage("Wystąpił błąd podczas ustawiania tematu.", "error");
-                    loading.style.display = "none";
-                    reportBtn.disabled = false;
-                  }
-                });
-              } else {
-                showMessage("Wystąpił błąd podczas ustawiania odbiorcy.", "error");
-                loading.style.display = "none";
-                reportBtn.disabled = false;
-              }
+            Office.context.mailbox.displayNewMessageForm({
+              toRecipients: message.toRecipients,
+              subject: message.subject,
+              htmlBody: message.htmlBody,
+              attachments: message.attachments
             });
+
+            showMessage("Zgłoszenie zostało przygotowane. Wyślij wiadomość, aby zakończyć proces.", "success");
+            loading.style.display = "none";
+            reportBtn.disabled = false;
+
+            // Zamknij panel po krótkim opóźnieniu
+            setTimeout(() => {
+              if (Office.context.ui && Office.context.ui.closeContainer) {
+                Office.context.ui.closeContainer();
+              }
+            }, 4000);
 
           });
 
