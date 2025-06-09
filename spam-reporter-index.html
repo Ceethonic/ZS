@@ -20,7 +20,7 @@
         <img alt="Logo Ratels" src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg"/>
       </a>
     </div>
-    <h1>Wykryto podejrzaną wiadomość!</h1>
+    <h1>Wykryto podejrzaną wiadomość?</h1>
     <p>Kliknij przycisk poniżej, aby przygotować zgłoszenie dla zespołu bezpieczeństwa. System automatycznie dołączy oryginalną wiadomość jako załącznik.</p>
     <button class="button" id="reportBtn">Zgłoś jako spam</button>
     
@@ -101,58 +101,28 @@
             showMessage("Przekroczono czas oczekiwania na odpowiedź. Spróbuj ponownie.", "error");
           }, 30000); // 30 sekund timeout
 
-          // Pobierz treść wiadomości i całą wiadomość w formacie EML
-          Promise.all([
-            new Promise((resolve) => {
-              item.body.getAsync(Office.CoercionType.Text, function(result) {
-                let cleaned = "(brak treści)";
-                if (result.status === Office.AsyncResultStatus.Succeeded && result.value) {
-                  cleaned = result.value;
-                }
-                resolve(cleaned);
-              });
-            }),
-            new Promise((resolve) => {
-              // Pobierz wiadomość jako plik
-              item.getAsFileAsync(function(result) {
-                if (result.status === Office.AsyncResultStatus.Succeeded) {
-                  const reader = new FileReader();
-                  reader.onload = function(e) {
-                    // Konwertuj zawartość na format EML
-                    const emlContent = `From: ${data.sender}
-To: ${data.recipient}
-Subject: ${data.subject}
-Date: ${data.receivedTime}
-Message-ID: ${data.messageId}
+          // Pobierz treść wiadomości
+          item.body.getAsync(Office.CoercionType.Text, function(result) {
+            let cleaned = "(brak treści)";
+            if (result.status === Office.AsyncResultStatus.Succeeded && result.value) {
+              cleaned = result.value;
+            }
 
-${e.target.result}`;
-                    resolve(emlContent);
-                  };
-                  reader.onerror = function(error) {
-                    console.error("Błąd odczytu pliku:", error);
-                    resolve(null);
-                  };
-                  reader.readAsText(result.value);
-                } else {
-                  console.error("Błąd pobierania pliku:", result.error);
-                  resolve(null);
-                }
-              });
-            })
-          ]).then(([bodyText, emlContent]) => {
-            clearTimeout(timeout); // Wyczyść timeout jeśli operacja się powiodła
-
+            // Przygotuj dane wiadomości
             const payload = {
               ...data,
-              body: bodyText,
-              links: extractLinks(bodyText),
+              body: cleaned,
+              links: extractLinks(cleaned),
               attachments: item.attachments ? item.attachments.map(att => att.name || att.fileName || '(bez nazwy)') : [],
-              originalMessage: emlContent ? {
-                content: emlContent,
+              originalMessage: {
                 itemId: String(item.itemId),
-                internetMessageId: item.internetMessageId
-              } : null
+                internetMessageId: item.internetMessageId,
+                // Dodaj flagę informującą serwer, że to jest oryginalna wiadomość do załączenia
+                isOriginalMessage: true
+              }
             };
+
+            console.log("Wysyłanie payload:", payload); // Debug log
 
             // Wyślij dane do backendu
             fetch('https://spam.cezz.pl/report-spam', {
@@ -177,18 +147,14 @@ ${e.target.result}`;
               }
             })
             .catch(err => {
+              console.error("Błąd wysyłania:", err); // Debug log
               showMessage("Błąd: " + err.message, "error");
             })
             .finally(() => {
+              clearTimeout(timeout);
               loading.style.display = "none";
               reportBtn.disabled = false;
             });
-          }).catch(error => {
-            clearTimeout(timeout); // Wyczyść timeout w przypadku błędu
-            console.error("Błąd przetwarzania wiadomości:", error);
-            showMessage(error.message || "Wystąpił nieoczekiwany błąd.", "error");
-            loading.style.display = "none";
-            reportBtn.disabled = false;
           });
         } catch (error) {
           console.error("Błąd inicjalizacji:", error);
