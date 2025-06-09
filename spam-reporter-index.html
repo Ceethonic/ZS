@@ -94,22 +94,41 @@
           loading.style.display = "block";
           reportBtn.disabled = true;
 
-          // Pobierz treść wiadomości
-          item.body.getAsync(Office.CoercionType.Text, function(result) {
-            let cleaned = "(brak treści)";
-            if (result.status === Office.AsyncResultStatus.Succeeded && result.value) {
-              cleaned = result.value;
-            }
-
+          // Pobierz treść wiadomości i całą wiadomość w formacie EML
+          Promise.all([
+            new Promise((resolve) => {
+              item.body.getAsync(Office.CoercionType.Text, function(result) {
+                let cleaned = "(brak treści)";
+                if (result.status === Office.AsyncResultStatus.Succeeded && result.value) {
+                  cleaned = result.value;
+                }
+                resolve(cleaned);
+              });
+            }),
+            new Promise((resolve) => {
+              item.getAsFileAsync(function(result) {
+                if (result.status === Office.AsyncResultStatus.Succeeded) {
+                  const reader = new FileReader();
+                  reader.onload = function(e) {
+                    resolve(e.target.result);
+                  };
+                  reader.readAsText(result.value);
+                } else {
+                  resolve(null);
+                }
+              });
+            })
+          ]).then(([bodyText, emlContent]) => {
             const payload = {
               ...data,
-              body: cleaned,
-              links: extractLinks(cleaned),
+              body: bodyText,
+              links: extractLinks(bodyText),
               attachments: item.attachments ? item.attachments.map(att => att.name || att.fileName || '(bez nazwy)') : [],
-              originalMessage: {
+              originalMessage: emlContent ? {
+                content: emlContent,
                 itemId: item.itemId,
                 internetMessageId: item.internetMessageId
-              }
+              } : null
             };
 
             // Wyślij dane do backendu
@@ -141,6 +160,10 @@
               loading.style.display = "none";
               reportBtn.disabled = false;
             });
+          }).catch(error => {
+            showMessage(error.message || "Wystąpił nieoczekiwany błąd.", "error");
+            loading.style.display = "none";
+            reportBtn.disabled = false;
           });
         } catch (error) {
           showMessage(error.message || "Wystąpił nieoczekiwany błąd.", "error");
