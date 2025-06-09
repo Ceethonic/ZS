@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1" name="viewport"/>
+  <title>Zgłoś Spam | Ratels Security</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js" type="text/javascript"></script>
+  <!-- Zaimportuj style z pliku CSS -->
+  <link href="styles.css" rel="stylesheet">
+</head>
+<body>
+  <div class="lang-switcher">
+    <a href="spam-reporter-index.html" aria-label="Polski"><img alt="PL" src="https://flagcdn.com/pl.svg" style="margin-right: 6px; vertical-align: middle;" width="24"/></a>
+    <a href="spam-reporter-indexENG.html" aria-label="English"><img alt="EN" src="https://flagcdn.com/gb.svg" style="vertical-align: middle;" width="24"/></a>
+  </div>
+
+  <div class="container">
+    <div class="logo-container">
+      <a href="https://ratels.pl" target="_blank" aria-label="Strona główna Ratels">
+        <img alt="Logo Ratels" src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg"/>
+      </a>
+    </div>
+    <h1>Wykryto podejrzaną wiadomość?</h1>
+    <p>Kliknij przycisk poniżej, aby przygotować zgłoszenie dla zespołu bezpieczeństwa. System automatycznie dołączy oryginalną wiadomość jako załącznik.</p>
+    <button class="button" id="reportBtn">Zgłoś jako spam</button>
+    
+    <div id="loadingIndicator" class="loading">Analizowanie wiadomości...</div>
+    <div id="resultMessage" class="message"></div>
+    
+    <div class="footer">
+      <p>© 2025 Ratels Security • <a href="https://ratels.pl/polityka-prywatnosci/" target="_blank">Polityka prywatności</a></p>
+    </div>
+  </div>
+
+  <script>
+    function showMessage(text, type = 'success') {
+      const div = document.getElementById("resultMessage");
+      div.textContent = text;
+      div.className = 'message ' + type;
+      div.classList.add('show');
+      
+      setTimeout(() => {
+        div.classList.remove('show');
+      }, 8000);
+    }
+
+    function saveReportedMessage(messageId) {
+      try {
+        const reportedMessages = JSON.parse(localStorage.getItem('reportedSpamMessages') || '[]');
+        if (!reportedMessages.includes(messageId)) {
+          reportedMessages.push(messageId);
+          localStorage.setItem('reportedSpamMessages', JSON.stringify(reportedMessages));
+        }
+      } catch (e) {
+        console.error("Błąd historii zgłoszeń:", e);
+      }
+    }
+
+    function isMessageReported(messageId) {
+      try {
+        const reportedMessages = JSON.parse(localStorage.getItem('reportedSpamMessages') || '[]');
+        return reportedMessages.includes(messageId);
+      } catch (e) {
+        console.error("Błąd sprawdzania historii zgłoszeń:", e);
+        return false;
+      }
+    }
+
+    Office.onReady(() => {
+      document.getElementById("reportBtn").addEventListener("click", () => {
+        const loading = document.getElementById("loadingIndicator");
+        const reportBtn = document.getElementById("reportBtn");
+        
+        try {
+          loading.style.display = "block";
+          reportBtn.disabled = true;
+
+          const item = Office.context.mailbox.item;
+          if (!item) {
+            throw new Error("Nie można pobrać szczegółów wiadomości.");
+          }
+
+          const data = {
+            subject: item.subject || "(brak tematu)",
+            sender: item.from ? (item.from.emailAddress || item.from.displayName) : "(nieznany nadawca)",
+            receivedTime: item.dateTimeCreated ? new Date(item.dateTimeCreated).toLocaleString() : "(nieznany czas)",
+            messageId: item.internetMessageId || "(brak ID)",
+            recipient: item.to && item.to.length > 0 ? (item.to[0].emailAddress || item.to[0].displayName) : "(nieznany odbiorca)"
+          };
+
+          if (isMessageReported(data.messageId)) {
+            showMessage("Ta wiadomość została już wcześniej zgłoszona.", "warning");
+            return;
+          }
+
+          // Pobierz treść wiadomości
+          item.body.getAsync(Office.CoercionType.Text, function(result) {
+            let cleaned = "(brak treści)";
+            if (result.status === Office.AsyncResultStatus.Succeeded && result.value) {
+              cleaned = result.value;
+            }
+
+            const payload = {
+              ...data,
+              body: cleaned,
+              links: extractLinks(cleaned),
+              attachments: item.attachments ? item.attachments.map(att => att.name || att.fileName || '(bez nazwy)') : [],
+              originalMessage: {
+                itemId: item.itemId,
+                internetMessageId: item.internetMessageId
+              }
+            };
+
+            // Wyślij dane do backendu
+            fetch('https://spam.cezz.pl/report-spam', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify(payload)
+            })
+            .then(async res => {
+              let responseText = await res.text();
+              let result;
+              try {
+                result = JSON.parse(responseText);
+              } catch (e) {
+                throw new Error("Nieprawidłowa odpowiedź serwera (status: " + res.status + ")");
+              }
+              
+              if (res.ok && result.success) {
+                saveReportedMessage(data.messageId);
+                showMessage("Zgłoszono pomyślnie!", "success");
+              } else {
+                throw new Error(result.error || responseText);
+              }
+            })
+            .catch(err => {
+              showMessage("Błąd: " + err.message, "error");
+            })
+            .finally(() => {
+              loading.style.display = "none";
+              reportBtn.disabled = false;
+            });
+          });
+        } catch (error) {
+          showMessage(error.message || "Wystąpił nieoczekiwany błąd.", "error");
+          loading.style.display = "none";
+          reportBtn.disabled = false;
+        }
+      });
+    });
+
+    function extractLinks(text) {
+      if (!text) return [];
+      const urlRegex = /https?:\/\/[\w\-\.\/?#&=;%+~:@!$'()*\[\],]+/gi;
+      return text.match(urlRegex) || [];
+    }
+  </script>
+</body>
+</html>
