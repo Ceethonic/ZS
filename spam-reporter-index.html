@@ -66,20 +66,27 @@
         const reportBtn = document.getElementById("reportBtn");
         
         try {
-          loading.style.display = "block";
-          reportBtn.disabled = true;
-
           const item = Office.context.mailbox.item;
           if (!item) {
             throw new Error("Nie można pobrać szczegółów wiadomości.");
           }
 
-          // Rozszerzona analiza wiadomości
+          // Najpierw sprawdzamy ID wiadomości
+          const messageId = item.internetMessageId || "(brak ID)";
+          if (saveReportedMessage(messageId)) {
+            showMessage("Ta wiadomość została już wcześniej zgłoszona.", "warning");
+            return;
+          }
+
+          // Dopiero po walidacji pokazujemy loading i rozpoczynamy analizę
+          loading.style.display = "block";
+          reportBtn.disabled = true;
+
           const data = {
             subject: item.subject || "(brak tematu)",
             sender: item.from ? (item.from.emailAddress || item.from.displayName) : "(nieznany nadawca)",
             receivedTime: item.dateTimeCreated ? new Date(item.dateTimeCreated).toLocaleString() : "(nieznany czas)",
-            messageId: item.internetMessageId || "(brak ID)",
+            messageId: messageId,
             hasAttachments: item.attachments && item.attachments.length > 0,
             attachmentCount: item.attachments ? item.attachments.length : 0,
             importance: item.importance || "normal",
@@ -87,11 +94,6 @@
             conversationId: item.conversationId || "(brak ID konwersacji)",
             bodyPreview: item.bodyPreview || "(brak podglądu)"
           };
-
-          if (saveReportedMessage(data.messageId)) {
-            showMessage("Ta wiadomość została już wcześniej zgłoszona.", "warning");
-            return;
-          }
 
           // Pobierz treść wiadomości
           item.body.getAsync(Office.CoercionType.Text, function(result) {
