@@ -119,27 +119,47 @@
             ]
           };
 
-          Office.context.mailbox.displayNewMessageForm({
-            toRecipients: message.toRecipients,
-            subject: message.subject,
-            htmlBody: message.htmlBody,
-            attachments: message.attachments,
-            async: true
-          }, (result) => {
+          // Tworzymy nową wiadomość
+          Office.context.mailbox.item.to.setAsync(message.toRecipients, (result) => {
             if (result.status === Office.AsyncResultStatus.Succeeded) {
-              showMessage("Zgłoszenie zostało wysłane pomyślnie.", "success");
-            } else {
-              showMessage("Wystąpił błąd podczas wysyłania zgłoszenia.", "error");
-            }
-            loading.style.display = "none";
-            reportBtn.disabled = false;
+              Office.context.mailbox.item.subject.setAsync(message.subject, (result) => {
+                if (result.status === Office.AsyncResultStatus.Succeeded) {
+                  Office.context.mailbox.item.body.setAsync(message.htmlBody, { coercionType: Office.CoercionType.Html }, (result) => {
+                    if (result.status === Office.AsyncResultStatus.Succeeded) {
+                      // Wysyłamy wiadomość
+                      Office.context.mailbox.item.sendAsync((result) => {
+                        if (result.status === Office.AsyncResultStatus.Succeeded) {
+                          showMessage("Zgłoszenie zostało wysłane pomyślnie.", "success");
+                        } else {
+                          showMessage("Wystąpił błąd podczas wysyłania zgłoszenia.", "error");
+                        }
+                        loading.style.display = "none";
+                        reportBtn.disabled = false;
 
-            // Zamknij panel po krótkim opóźnieniu
-            setTimeout(() => {
-              if (Office.context.ui && Office.context.ui.closeContainer) {
-                Office.context.ui.closeContainer();
-              }
-            }, 4000);
+                        // Zamknij panel po krótkim opóźnieniu
+                        setTimeout(() => {
+                          if (Office.context.ui && Office.context.ui.closeContainer) {
+                            Office.context.ui.closeContainer();
+                          }
+                        }, 4000);
+                      });
+                    } else {
+                      showMessage("Wystąpił błąd podczas ustawiania treści wiadomości.", "error");
+                      loading.style.display = "none";
+                      reportBtn.disabled = false;
+                    }
+                  });
+                } else {
+                  showMessage("Wystąpił błąd podczas ustawiania tematu.", "error");
+                  loading.style.display = "none";
+                  reportBtn.disabled = false;
+                }
+              });
+            } else {
+              showMessage("Wystąpił błąd podczas ustawiania odbiorcy.", "error");
+              loading.style.display = "none";
+              reportBtn.disabled = false;
+            }
           });
 
         } catch (error) {
