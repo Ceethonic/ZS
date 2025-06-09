@@ -20,7 +20,7 @@
         <img alt="Logo Ratels" src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg"/>
       </a>
     </div>
-    <h1>Wykryto podejrzaną wiadomość?</h1>
+    <h1>Wykryto podejrzaną wiadomość??</h1>
     <p>Kliknij przycisk poniżej, aby przygotować zgłoszenie dla zespołu bezpieczeństwa. System automatycznie dołączy oryginalną wiadomość jako załącznik.</p>
     <button class="button" id="reportBtn">Zgłoś jako spam</button>
     
@@ -106,14 +106,19 @@
               });
             }),
             new Promise((resolve) => {
-              item.getAsFileAsync(function(result) {
+              // Tworzymy załącznik typu Item
+              const attachment = {
+                type: Office.MailboxEnums.AttachmentType.Item,
+                itemId: item.itemId,
+                name: "spam_message.eml"
+              };
+
+              // Pobieramy zawartość załącznika
+              item.getAttachmentContentAsync(attachment, function(result) {
                 if (result.status === Office.AsyncResultStatus.Succeeded) {
-                  const reader = new FileReader();
-                  reader.onload = function(e) {
-                    resolve(e.target.result);
-                  };
-                  reader.readAsText(result.value);
+                  resolve(result.value.content);
                 } else {
+                  console.error("Błąd pobierania załącznika:", result.error);
                   resolve(null);
                 }
               });
