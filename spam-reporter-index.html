@@ -20,7 +20,7 @@
         <img alt="Logo Ratels" src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg"/>
       </a>
     </div>
-    <h1>Wykryto podejrzaną wiadomość?</h1>
+    <h1>Wykryto podejrzaną wiadomość?TEST</h1>
     <p>Kliknij przycisk poniżej, aby przygotować zgłoszenie dla zespołu bezpieczeństwa. System automatycznie dołączy oryginalną wiadomość jako załącznik.</p>
     <button class="button" id="reportBtn">Zgłoś jako spam</button>
     
@@ -101,24 +101,41 @@
             showMessage("Przekroczono czas oczekiwania na odpowiedź. Spróbuj ponownie.", "error");
           }, 30000); // 30 sekund timeout
 
-          // Pobierz treść wiadomości
-          item.body.getAsync(Office.CoercionType.Text, function(result) {
-            let cleaned = "(brak treści)";
-            if (result.status === Office.AsyncResultStatus.Succeeded && result.value) {
-              cleaned = result.value;
-            }
+          // Pobierz treść wiadomości i nagłówki
+          Promise.all([
+            new Promise((resolve) => {
+              item.body.getAsync(Office.CoercionType.Text, function(result) {
+                let cleaned = "(brak treści)";
+                if (result.status === Office.AsyncResultStatus.Succeeded && result.value) {
+                  cleaned = result.value;
+                }
+                resolve(cleaned);
+              });
+            }),
+            new Promise((resolve) => {
+              item.getAllInternetHeadersAsync(function(result) {
+                if (result.status === Office.AsyncResultStatus.Succeeded) {
+                  resolve(result.value);
+                } else {
+                  console.error("Błąd pobierania nagłówków:", result.error);
+                  resolve(null);
+                }
+              });
+            })
+          ]).then(([bodyText, headers]) => {
+            clearTimeout(timeout);
 
             // Przygotuj dane wiadomości
             const payload = {
               ...data,
-              body: cleaned,
-              links: extractLinks(cleaned),
+              body: bodyText,
+              links: extractLinks(bodyText),
               attachments: item.attachments ? item.attachments.map(att => att.name || att.fileName || '(bez nazwy)') : [],
               originalMessage: {
                 itemId: String(item.itemId),
                 internetMessageId: item.internetMessageId,
-                // Dodaj flagę informującą serwer, że to jest oryginalna wiadomość do załączenia
-                isOriginalMessage: true
+                headers: headers,
+                body: bodyText
               }
             };
 
@@ -127,15 +144,20 @@
             // Wyślij dane do backendu
             fetch('https://spam.cezz.pl/report-spam', {
               method: 'POST',
-              headers: {'Content-Type': 'application/json'},
+              headers: {
+                'Content-Type': 'application/json',
+                'User-Agent': navigator.userAgent
+              },
               body: JSON.stringify(payload)
             })
             .then(async res => {
               let responseText = await res.text();
+              console.log("Odpowiedź serwera:", responseText); // Debug log
               let result;
               try {
                 result = JSON.parse(responseText);
               } catch (e) {
+                console.error("Błąd parsowania odpowiedzi:", e); // Debug log
                 throw new Error("Nieprawidłowa odpowiedź serwera (status: " + res.status + ")");
               }
               
@@ -143,6 +165,7 @@
                 saveReportedMessage(data.messageId);
                 showMessage("Zgłoszono pomyślnie!", "success");
               } else {
+                console.error("Błąd serwera:", result.error); // Debug log
                 throw new Error(result.error || responseText);
               }
             })
@@ -151,10 +174,15 @@
               showMessage("Błąd: " + err.message, "error");
             })
             .finally(() => {
-              clearTimeout(timeout);
               loading.style.display = "none";
               reportBtn.disabled = false;
             });
+          }).catch(error => {
+            clearTimeout(timeout);
+            console.error("Błąd przetwarzania wiadomości:", error);
+            showMessage(error.message || "Wystąpił nieoczekiwany błąd.", "error");
+            loading.style.display = "none";
+            reportBtn.disabled = false;
           });
         } catch (error) {
           console.error("Błąd inicjalizacji:", error);
