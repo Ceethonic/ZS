@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -21,7 +20,7 @@
         <img alt="Logo Ratels" src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg"/>
       </a>
     </div>
-    <h1>Wykryto podejrzaną wiadomość?:D</h1>
+    <h1>Wykryto podejrzaną wiadomość?</h1>
     <p>Kliknij przycisk poniżej, aby przygotować zgłoszenie dla zespołu bezpieczeństwa. System automatycznie dołączy oryginalną wiadomość jako załącznik.</p>
     <button class="button" id="reportBtn">Zgłoś jako spam</button>
     
@@ -135,13 +134,14 @@
                 const attachmentPromises = item.attachments.map(attachment => {
                   return new Promise((resolveAttachment) => {
                     console.log("Pobieranie załącznika:", attachment.name); // Debug log
-                    attachment.getContentAsync(function(result) {
+                    item.getAttachmentContentAsync(attachment.id, function(result) {
                       console.log("Status pobierania załącznika:", result.status); // Debug log
                       if (result.status === Office.AsyncResultStatus.Succeeded) {
                         resolveAttachment({
                           name: attachment.name,
-                          contentType: attachment.contentType,
-                          content: result.value
+                          contentType: result.value.contentType,
+                          content: result.value.content,
+                          isBase64: result.value.format === Office.MailboxEnums.AttachmentContentFormat.Base64
                         });
                       } else {
                         console.error("Błąd pobierania załącznika:", result.error);
