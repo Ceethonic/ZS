@@ -20,7 +20,7 @@
         <img alt="Logo Ratels" src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg"/>
       </a>
     </div>
-    <h1>Wykryto podejrzaną wiadomość?TEST</h1>
+    <h1>Wykryto podejrzaną wiadomość?</h1>
     <p>Kliknij przycisk poniżej, aby przygotować zgłoszenie dla zespołu bezpieczeństwa. System automatycznie dołączy oryginalną wiadomość jako załącznik.</p>
     <button class="button" id="reportBtn">Zgłoś jako spam</button>
     
@@ -121,8 +121,31 @@
                   resolve(null);
                 }
               });
+            }),
+            new Promise((resolve) => {
+              if (item.attachments && item.attachments.length > 0) {
+                const attachmentPromises = item.attachments.map(attachment => {
+                  return new Promise((resolveAttachment) => {
+                    attachment.getContentAsync(function(result) {
+                      if (result.status === Office.AsyncResultStatus.Succeeded) {
+                        resolveAttachment({
+                          name: attachment.name,
+                          contentType: attachment.contentType,
+                          content: result.value
+                        });
+                      } else {
+                        console.error("Błąd pobierania załącznika:", result.error);
+                        resolveAttachment(null);
+                      }
+                    });
+                  });
+                });
+                Promise.all(attachmentPromises).then(resolve);
+              } else {
+                resolve([]);
+              }
             })
-          ]).then(([bodyText, headers]) => {
+          ]).then(([bodyText, headers, attachments]) => {
             clearTimeout(timeout);
 
             // Przygotuj dane wiadomości
@@ -130,7 +153,11 @@
               ...data,
               body: bodyText,
               links: extractLinks(bodyText),
-              attachments: item.attachments ? item.attachments.map(att => att.name || att.fileName || '(bez nazwy)') : [],
+              attachments: attachments.filter(a => a !== null).map(att => ({
+                name: att.name,
+                contentType: att.contentType,
+                content: att.content
+              })),
               originalMessage: {
                 itemId: String(item.itemId),
                 internetMessageId: item.internetMessageId,
