@@ -5,6 +5,7 @@
   <meta content="width=device-width, initial-scale=1" name="viewport"/>
   <title>Zgłoś Spam | Ratels Security</title>
   <script src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js" type="text/javascript"></script>
+  <!-- Zaimportuj style z pliku CSS -->
   <link href="styles.css" rel="stylesheet">
 </head>
 <body>
@@ -53,6 +54,7 @@
       div.className = 'message ' + type;
       div.classList.add('show');
       
+      // Automatyczne ukrycie po 8 sekundach
       setTimeout(() => {
         div.classList.remove('show');
       }, 8000);
@@ -91,105 +93,151 @@
             return;
           }
 
-          const reportBody = [
-            "<div style='font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 24px;'>",
-            "<div style='background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 24px; border-radius: 12px; margin-bottom: 24px;'>",
-            "<h2 style='color: #1a1a1a; margin: 0 0 16px 0; font-size: 24px; font-weight: 600;'>🚨 Zgłoszenie wiadomości spam</h2>",
-            "<p style='color: #4a4a4a; line-height: 1.6; margin: 0;'>Szczegółowy raport podejrzanej wiadomości:</p>",
-            "</div>",
-            
-            "<div style='background-color: white; padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>",
-            
-            // Sekcja głównych informacji
-            "<div style='margin-bottom: 24px;'>",
-            "<h3 style='color: #2c3e50; margin: 0 0 16px 0; font-size: 18px; font-weight: 600;'>📧 Podstawowe informacje</h3>",
-            "<table style='width:100%; border-collapse: collapse;'>",
-            `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:500; color: #2c3e50; width: 30%;'>Temat:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${data.subject}</td></tr>`,
-            `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:500; color: #2c3e50;'>Nadawca:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${data.sender}</td></tr>`,
-            `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:500; color: #2c3e50;'>Data otrzymania:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${data.receivedTime}</td></tr>`,
-            "</table>",
-            "</div>",
-            
-            // Sekcja metadanych
-            "<div style='margin-bottom: 24px;'>",
-            "<h3 style='color: #2c3e50; margin: 0 0 16px 0; font-size: 18px; font-weight: 600;'>🔍 Metadane wiadomości</h3>",
-            "<table style='width:100%; border-collapse: collapse;'>",
-            `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:500; color: #2c3e50; width: 30%;'>ID wiadomości:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e; font-family: monospace;'>${data.messageId}</td></tr>`,
-            `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:500; color: #2c3e50;'>ID konwersacji:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e; font-family: monospace;'>${data.conversationId}</td></tr>`,
-            `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:500; color: #2c3e50;'>Priorytet:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${data.importance}</td></tr>`,
-            "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;'>",
-            "<div style='background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;'>",
-            "<h2 style='color: #2c3e50; margin-top: 0; border-bottom: 2px solid #3498db; padding-bottom: 10px;'>Zgłoszenie wiadomości spam</h2>",
-            "<p style='color: #34495e; line-height: 1.6;'>Poniżej znajdują się szczegóły zgłoszonej wiadomości:</p>",
-            "</div>",
-            "<div style='background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>",
-            "<table style='width:100%; border-collapse: collapse; margin-bottom: 20px;'>",
-            `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:bold; color: #2c3e50;'>Temat:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${data.subject}</td></tr>`,
-            `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:bold; color: #2c3e50;'>Nadawca:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${data.sender}</td></tr>`,
-            `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:bold; color: #2c3e50;'>Data otrzymania:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${data.receivedTime}</td></tr>`,
-            "</table>",
-            "<p style='color: #34495e; margin-bottom: 20px;'>Wiadomość została dołączona jako załącznik.</p>",
-            "<div style='background-color: #f8f9fa; padding: 15px; border-radius: 6px; margin-top: 20px;'>",
-            "<p style='font-size:13px; color:#666; margin: 0;'>Dziękujemy za czujność i pomoc w utrzymaniu bezpieczeństwa naszej sieci.</p>",
-            "</div>",
-            "</div>",
-            "</div>"
-          ].join("");
+          // Pobierz treść wiadomości
+          item.body.getAsync(Office.CoercionType.Text, function(result) {
+            let bodyContent = "(brak treści)";
+            if (result.status === Office.AsyncResultStatus.Succeeded && result.value) {
+              bodyContent = result.value;
+            }
 
-          const message = {
-            toRecipients: ['tomaszciszewski01@gmail.com'],
-            subject: "SPAM: " + data.subject,
-            htmlBody: reportBody,
-            attachments: [
-              {
-                type: Office.MailboxEnums.AttachmentType.Item,
-                itemId: item.itemId,
-                name: "wiadomosc_spam.eml"
-              }
-            ]
-          };
+            // Wyciągnij linki z treści
+            const linkRegex = /(https?:\/\/[^\s]+)/g;
+            const links = bodyContent.match(linkRegex) || [];
 
-          // Tworzymy nową wiadomość
-          Office.context.mailbox.item.to.setAsync(message.toRecipients, (result) => {
-            if (result.status === Office.AsyncResultStatus.Succeeded) {
-              Office.context.mailbox.item.subject.setAsync(message.subject, (result) => {
-                if (result.status === Office.AsyncResultStatus.Succeeded) {
-                  Office.context.mailbox.item.body.setAsync(message.htmlBody, { coercionType: Office.CoercionType.Html }, (result) => {
-                    if (result.status === Office.AsyncResultStatus.Succeeded) {
-                      // Wysyłamy wiadomość
-                      Office.context.mailbox.item.sendAsync((result) => {
-                        if (result.status === Office.AsyncResultStatus.Succeeded) {
-                          showMessage("Zgłoszenie zostało wysłane pomyślnie.", "success");
-                        } else {
-                          showMessage("Wystąpił błąd podczas wysyłania zgłoszenia.", "error");
-                        }
+            // Przygotuj listę załączników
+            const attachments = item.attachments ? item.attachments.map(att => ({
+              name: att.name || att.fileName || '(bez nazwy)',
+              size: att.size ? formatFileSize(att.size) : 'nieznany',
+              type: att.contentType || 'nieznany'
+            })) : [];
+
+            const reportBody = [
+              "<div style='font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 24px;'>",
+              "<div style='background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 24px; border-radius: 12px; margin-bottom: 24px;'>",
+              "<h2 style='color: #1a1a1a; margin: 0 0 16px 0; font-size: 24px; font-weight: 600;'>🚨 Zgłoszenie wiadomości spam</h2>",
+              "<p style='color: #4a4a4a; line-height: 1.6; margin: 0;'>Szczegółowy raport podejrzanej wiadomości:</p>",
+              "</div>",
+              
+              "<div style='background-color: white; padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>",
+              
+              // Sekcja głównych informacji
+              "<div style='margin-bottom: 24px;'>",
+              "<h3 style='color: #2c3e50; margin: 0 0 16px 0; font-size: 18px; font-weight: 600;'>📧 Podstawowe informacje</h3>",
+              "<table style='width:100%; border-collapse: collapse;'>",
+              `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:500; color: #2c3e50; width: 30%;'>Temat:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${data.subject}</td></tr>`,
+              `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:500; color: #2c3e50;'>Nadawca:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${data.sender}</td></tr>`,
+              `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:500; color: #2c3e50;'>Data otrzymania:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${data.receivedTime}</td></tr>`,
+              "</table>",
+              "</div>",
+              
+              // Sekcja metadanych
+              "<div style='margin-bottom: 24px;'>",
+              "<h3 style='color: #2c3e50; margin: 0 0 16px 0; font-size: 18px; font-weight: 600;'>🔍 Metadane wiadomości</h3>",
+              "<table style='width:100%; border-collapse: collapse;'>",
+              `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:500; color: #2c3e50; width: 30%;'>ID wiadomości:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e; font-family: monospace;'>${data.messageId}</td></tr>`,
+              `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:500; color: #2c3e50;'>ID konwersacji:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e; font-family: monospace;'>${data.conversationId}</td></tr>`,
+              `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:500; color: #2c3e50;'>Priorytet:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${data.importance}</td></tr>`,
+              "</table>",
+              "</div>",
+              
+              // Sekcja załączników
+              attachments.length > 0 ? [
+                "<div style='margin-bottom: 24px;'>",
+                "<h3 style='color: #2c3e50; margin: 0 0 16px 0; font-size: 18px; font-weight: 600;'>📎 Załączniki</h3>",
+                "<table style='width:100%; border-collapse: collapse;'>",
+                ...attachments.map(att => 
+                  `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${att.name}</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #7f8c8d; font-size: 0.9em;'>${att.size} • ${att.type}</td></tr>`
+                ),
+                "</table>",
+                "</div>"
+              ].join("") : "",
+              
+              // Sekcja linków
+              links.length > 0 ? [
+                "<div style='margin-bottom: 24px;'>",
+                "<h3 style='color: #2c3e50; margin: 0 0 16px 0; font-size: 18px; font-weight: 600;'>🔗 Wykryte linki</h3>",
+                "<div style='background: #f8f9fa; padding: 16px; border-radius: 8px;'>",
+                ...links.map(link => 
+                  `<div style='margin-bottom: 8px;'><a href='${link}' style='color: #3498db; text-decoration: none; word-break: break-all;'>${link}</a></div>`
+                ),
+                "</div>",
+                "</div>"
+              ].join("") : "",
+              
+              // Podgląd treści
+              "<div style='margin-bottom: 24px;'>",
+              "<h3 style='color: #2c3e50; margin: 0 0 16px 0; font-size: 18px; font-weight: 600;'>📝 Podgląd treści</h3>",
+              "<div style='background: #f8f9fa; padding: 16px; border-radius: 8px; font-family: monospace; white-space: pre-wrap; color: #34495e; font-size: 0.9em;'>",
+              bodyContent.substring(0, 500) + (bodyContent.length > 500 ? "..." : ""),
+              "</div>",
+              "</div>",
+              
+              // Stopka
+              "<div style='margin-top: 32px; padding-top: 24px; border-top: 1px solid #e9ecef; text-align: center; color: #7f8c8d; font-size: 0.9em;'>",
+              "<p style='margin: 0;'>Dziękujemy za czujność i pomoc w utrzymaniu bezpieczeństwa naszej sieci.</p>",
+              "<p style='margin: 8px 0 0 0;'>Wiadomość oryginalna została dołączona jako załącznik EML.</p>",
+              "</div>",
+              
+              "</div>",
+              "</div>"
+            ].join("");
+
+            const message = {
+              toRecipients: ['tomaszciszewski01@gmail.com'],
+              subject: "SPAM: " + data.subject,
+              htmlBody: reportBody,
+              attachments: [
+                {
+                  type: Office.MailboxEnums.AttachmentType.Item,
+                  itemId: item.itemId,
+                  name: "wiadomosc_spam.eml"
+                }
+              ]
+            };
+
+            // Tworzymy nową wiadomość
+            Office.context.mailbox.item.to.setAsync(message.toRecipients, (result) => {
+              if (result.status === Office.AsyncResultStatus.Succeeded) {
+                Office.context.mailbox.item.subject.setAsync(message.subject, (result) => {
+                  if (result.status === Office.AsyncResultStatus.Succeeded) {
+                    Office.context.mailbox.item.body.setAsync(message.htmlBody, { coercionType: Office.CoercionType.Html }, (result) => {
+                      if (result.status === Office.AsyncResultStatus.Succeeded) {
+                        // Wysyłamy wiadomość
+                        Office.context.mailbox.item.sendAsync((result) => {
+                          if (result.status === Office.AsyncResultStatus.Succeeded) {
+                            showMessage("Zgłoszenie zostało wysłane pomyślnie.", "success");
+                          } else {
+                            showMessage("Wystąpił błąd podczas wysyłania zgłoszenia.", "error");
+                          }
+                          loading.style.display = "none";
+                          reportBtn.disabled = false;
+
+                          // Zamknij panel po krótkim opóźnieniu
+                          setTimeout(() => {
+                            if (Office.context.ui && Office.context.ui.closeContainer) {
+                              Office.context.ui.closeContainer();
+                            }
+                          }, 4000);
+                        });
+                      } else {
+                        showMessage("Wystąpił błąd podczas ustawiania treści wiadomości.", "error");
                         loading.style.display = "none";
                         reportBtn.disabled = false;
+                      }
+                    });
+                  } else {
+                    showMessage("Wystąpił błąd podczas ustawiania tematu.", "error");
+                    loading.style.display = "none";
+                    reportBtn.disabled = false;
+                  }
+                });
+              } else {
+                showMessage("Wystąpił błąd podczas ustawiania odbiorcy.", "error");
+                loading.style.display = "none";
+                reportBtn.disabled = false;
+              }
+            });
 
-                        // Zamknij panel po krótkim opóźnieniu
-                        setTimeout(() => {
-                          if (Office.context.ui && Office.context.ui.closeContainer) {
-                            Office.context.ui.closeContainer();
-                          }
-                        }, 4000);
-                      });
-                    } else {
-                      showMessage("Wystąpił błąd podczas ustawiania treści wiadomości.", "error");
-                      loading.style.display = "none";
-                      reportBtn.disabled = false;
-                    }
-                  });
-                } else {
-                  showMessage("Wystąpił błąd podczas ustawiania tematu.", "error");
-                  loading.style.display = "none";
-                  reportBtn.disabled = false;
-                }
-              });
-            } else {
-              showMessage("Wystąpił błąd podczas ustawiania odbiorcy.", "error");
-              loading.style.display = "none";
-              reportBtn.disabled = false;
-            }
           });
 
         } catch (error) {
@@ -197,6 +245,15 @@
         }
       });
     });
+
+    // Dodaj funkcję pomocniczą do formatowania rozmiaru pliku
+    function formatFileSize(bytes) {
+      if (!bytes) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
   </script>
 </body>
 </html>
