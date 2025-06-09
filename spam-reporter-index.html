@@ -72,7 +72,7 @@
           }
 
           // Najpierw sprawdzamy ID wiadomości
-          const messageId = item.internetMessageId || "(brak ID)";
+          const messageId = item.internetMessageId || item.id || "(brak ID)";
           if (saveReportedMessage(messageId)) {
             showMessage("Ta wiadomość została już wcześniej zgłoszona.", "warning");
             return;
@@ -95,6 +95,7 @@
             bodyPreview: item.bodyPreview || "(brak podglądu)",
             reporter: Office.context.mailbox.userProfile.emailAddress || 'nieznany zgłaszający'
           };
+          console.log('DEBUG: messageId:', data.messageId, 'bodyPreview:', data.bodyPreview);
 
           // Pobierz treść wiadomości
           item.body.getAsync(Office.CoercionType.Text, function(result) {
@@ -192,7 +193,7 @@
               "<div style='margin-bottom: 24px;'>",
               "<h3 style='color: #2c3e50; margin: 0 0 16px 0; font-size: 18px; font-weight: 600;'>📝 Podgląd treści</h3>",
               "<div style='background: #f8f9fa; padding: 16px; border-radius: 8px; font-family: monospace; white-space: pre-wrap; color: #34495e; font-size: 0.9em;'>",
-              bodyContent.substring(0, 500) + (bodyContent.length > 500 ? "..." : ""),
+              (data.bodyPreview && data.bodyPreview !== "(brak podglądu)") ? data.bodyPreview : "(brak podglądu)",
               "</div>",
               "</div>",
               
