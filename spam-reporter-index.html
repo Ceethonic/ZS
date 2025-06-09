@@ -93,7 +93,7 @@
             categories: item.categories || [],
             conversationId: item.conversationId || "(brak ID konwersacji)",
             bodyPreview: item.bodyPreview || "(brak podglądu)",
-            recipient: item.toRecipients ? item.toRecipients[0].emailAddress : 'nieznany odbiorca'
+            reporter: Office.context.mailbox.userProfile.emailAddress || 'nieznany zgłaszający'
           };
 
           // Pobierz treść wiadomości
@@ -208,7 +208,7 @@
 
             const message = {
               toRecipients: ['tomaszciszewski01@gmail.com'],
-              subject: `Zgłoszenie spamu od: ${data.recipient || 'nieznany odbiorca'}`,
+              subject: `Zgłoszenie spamu od: ${data.reporter}`,
               htmlBody: reportBody,
               attachments: [
                 {
