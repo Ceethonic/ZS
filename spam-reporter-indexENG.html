@@ -5,90 +5,8 @@
   <meta content="width=device-width, initial-scale=1" name="viewport"/>
   <title>Report Spam | Ratels Security</title>
   <script src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js" type="text/javascript"></script>
+  <!-- Import styles from CSS file -->
   <link href="styles.css" rel="stylesheet">
-  <style>
-    .lang-switcher {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-    }
-    .lang-switcher img {
-      border: 1px solid #ddd;
-      border-radius: 4px;
-    }
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 40px 20px;
-      text-align: center;
-    }
-    .logo-container {
-      margin-bottom: 30px;
-    }
-    .logo-container img {
-      max-width: 200px;
-      height: auto;
-    }
-    h1 {
-      color: #0078d4;
-      margin-bottom: 20px;
-    }
-    .button {
-      background: #0078d4;
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 4px;
-      font-size: 16px;
-      cursor: pointer;
-      transition: background 0.3s;
-    }
-    .button:hover {
-      background: #106ebe;
-    }
-    .button:disabled {
-      background: #ccc;
-      cursor: not-allowed;
-    }
-    .loading {
-      display: none;
-      margin: 20px 0;
-      color: #666;
-    }
-    .message {
-      display: none;
-      padding: 10px;
-      margin: 10px 0;
-      border-radius: 4px;
-    }
-    .message.show {
-      display: block;
-    }
-    .message.success {
-      background: #dff6dd;
-      color: #107c10;
-    }
-    .message.error {
-      background: #fde7e9;
-      color: #d13438;
-    }
-    .message.warning {
-      background: #fff4ce;
-      color: #856404;
-    }
-    .footer {
-      margin-top: 40px;
-      color: #666;
-      font-size: 0.9em;
-    }
-    .footer a {
-      color: #0078d4;
-      text-decoration: none;
-    }
-    .footer a:hover {
-      text-decoration: underline;
-    }
-  </style>
 </head>
 <body>
   <div class="lang-switcher">
@@ -98,17 +16,17 @@
 
   <div class="container">
     <div class="logo-container">
-      <a href="https://ratels.pl" target="_blank" aria-label="Ratels Homepage">
+      <a href="https://ratels.pl" target="_blank" aria-label="Ratels Home Page">
         <img alt="Ratels Logo" src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg"/>
       </a>
     </div>
-    <h1>Detected a Suspicious Message?</h1>
-    <p>Click the button below to prepare a report for the security team. The system will automatically attach the original message.</p>
-    <button class="button" id="reportBtn">Report as Spam</button>
-
+    <h1>Suspicious message detected?</h1>
+    <p>Click the button below to prepare a report for the security team. The system will automatically attach the original message as an attachment.</p>
+    <button class="button" id="reportBtn">Report as spam</button>
+    
     <div id="loadingIndicator" class="loading">Analyzing message...</div>
     <div id="resultMessage" class="message"></div>
-
+    
     <div class="footer">
       <p>© 2025 Ratels Security • <a href="https://ratels.pl/polityka-prywatnosci/" target="_blank">Privacy Policy</a></p>
     </div>
@@ -136,7 +54,7 @@
       div.className = 'message ' + type;
       div.classList.add('show');
       
-      // Automatically hide after 8 seconds
+      // Auto-hide after 8 seconds
       setTimeout(() => {
         div.classList.remove('show');
       }, 8000);
@@ -150,7 +68,7 @@
         try {
           const item = Office.context.mailbox.item;
           if (!item) {
-            throw new Error("Unable to retrieve message details.");
+            throw new Error("Cannot retrieve message details.");
           }
 
           // First check message ID
@@ -178,7 +96,7 @@
             recipient: item.toRecipients ? item.toRecipients[0].emailAddress : 'unknown recipient'
           };
 
-          // Get message body
+          // Get message content
           item.body.getAsync(Office.CoercionType.Text, function(result) {
             let bodyContent = "(no content)";
             if (result.status === Office.AsyncResultStatus.Succeeded && result.value) {
@@ -206,7 +124,7 @@
               
               "<div style='background-color: white; padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>",
               
-              // Basic information section
+              // Main information section
               "<div style='margin-bottom: 24px;'>",
               "<h3 style='color: #2c3e50; margin: 0 0 16px 0; font-size: 18px; font-weight: 600;'>📧 Basic Information</h3>",
               "<table style='width:100%; border-collapse: collapse;'>",
@@ -216,7 +134,7 @@
               "</table>",
               "</div>",
               
-              // Message metadata section
+              // Metadata section
               "<div style='margin-bottom: 24px;'>",
               "<h3 style='color: #2c3e50; margin: 0 0 16px 0; font-size: 18px; font-weight: 600;'>🔍 Message Metadata</h3>",
               "<table style='width:100%; border-collapse: collapse;'>",
@@ -280,7 +198,7 @@
               
               // Footer
               "<div style='margin-top: 32px; padding-top: 24px; border-top: 1px solid #e9ecef; text-align: center; color: #7f8c8d; font-size: 0.9em;'>",
-              "<p style='margin: 0;'>Thank you for your vigilance and assistance in maintaining our network security.</p>",
+              "<p style='margin: 0;'>Thank you for your vigilance and help in maintaining the security of our network.</p>",
               "<p style='margin: 8px 0 0 0;'>The original message has been attached as an EML file.</p>",
               "</div>",
               
@@ -313,7 +231,7 @@
             loading.style.display = "none";
             reportBtn.disabled = false;
 
-            // Close the pane after a short delay
+            // Close panel after short delay
             setTimeout(() => {
               if (Office.context.ui && Office.context.ui.closeContainer) {
                 Office.context.ui.closeContainer();
@@ -328,7 +246,7 @@
       });
     });
 
-    // Helper function to format file size
+    // Add helper function for file size formatting
     function formatFileSize(bytes) {
       if (!bytes) return '0 B';
       const k = 1024;
@@ -337,19 +255,20 @@
       return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
-    // Helper function to extract active links
+    // Function to extract active links from text
     function extractActiveLinks(text) {
       const linkRegex = /(https?:\/\/[^\s<>"]+|www\.[^\s<>"]+)/g;
       const links = text.match(linkRegex) || [];
       return links.map(link => {
+        // Add http:// if link starts with www
         if (link.startsWith('www.')) {
           return 'http://' + link;
         }
         return link;
-      }).filter((link, index, self) => self.indexOf(link) === index);
+      }).filter((link, index, self) => self.indexOf(link) === index); // Remove duplicates
     }
 
-    // Helper function to check if link is safe
+    // Function to check if link is safe
     function isSafeLink(link) {
       const safeDomains = [
         'ratels.pl',
