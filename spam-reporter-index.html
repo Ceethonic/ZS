@@ -72,9 +72,6 @@
         const reportBtn = document.getElementById("reportBtn");
         
         try {
-          loading.style.display = "block";
-          reportBtn.disabled = true;
-
           const item = Office.context.mailbox.item;
           if (!item) {
             throw new Error("Nie można pobrać szczegółów wiadomości.");
@@ -92,6 +89,10 @@
             showMessage("Ta wiadomość została już wcześniej zgłoszona.", "warning");
             return;
           }
+
+          // Pokaż wskaźnik ładowania dopiero po sprawdzeniu czy wiadomość nie była już zgłoszona
+          loading.style.display = "block";
+          reportBtn.disabled = true;
 
           // Pobierz treść wiadomości
           item.body.getAsync(Office.CoercionType.Text, function(result) {
