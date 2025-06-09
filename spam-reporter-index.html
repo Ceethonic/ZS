@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -20,7 +21,7 @@
         <img alt="Logo Ratels" src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg"/>
       </a>
     </div>
-    <h1>Wykryto podejrzaną wiadomość?</h1>
+    <h1>Wykryto podejrzaną wiadomość?:D</h1>
     <p>Kliknij przycisk poniżej, aby przygotować zgłoszenie dla zespołu bezpieczeństwa. System automatycznie dołączy oryginalną wiadomość jako załącznik.</p>
     <button class="button" id="reportBtn">Zgłoś jako spam</button>
     
@@ -102,9 +103,12 @@
           }, 30000); // 30 sekund timeout
 
           // Pobierz treść wiadomości i nagłówki
+          console.log("Rozpoczynam pobieranie danych wiadomości..."); // Debug log
           Promise.all([
             new Promise((resolve) => {
+              console.log("Pobieranie treści wiadomości..."); // Debug log
               item.body.getAsync(Office.CoercionType.Text, function(result) {
+                console.log("Status pobierania treści:", result.status); // Debug log
                 let cleaned = "(brak treści)";
                 if (result.status === Office.AsyncResultStatus.Succeeded && result.value) {
                   cleaned = result.value;
@@ -113,7 +117,9 @@
               });
             }),
             new Promise((resolve) => {
+              console.log("Pobieranie nagłówków..."); // Debug log
               item.getAllInternetHeadersAsync(function(result) {
+                console.log("Status pobierania nagłówków:", result.status); // Debug log
                 if (result.status === Office.AsyncResultStatus.Succeeded) {
                   resolve(result.value);
                 } else {
@@ -123,10 +129,14 @@
               });
             }),
             new Promise((resolve) => {
+              console.log("Sprawdzanie załączników..."); // Debug log
               if (item.attachments && item.attachments.length > 0) {
+                console.log("Znaleziono załączniki:", item.attachments.length); // Debug log
                 const attachmentPromises = item.attachments.map(attachment => {
                   return new Promise((resolveAttachment) => {
+                    console.log("Pobieranie załącznika:", attachment.name); // Debug log
                     attachment.getContentAsync(function(result) {
+                      console.log("Status pobierania załącznika:", result.status); // Debug log
                       if (result.status === Office.AsyncResultStatus.Succeeded) {
                         resolveAttachment({
                           name: attachment.name,
@@ -142,10 +152,12 @@
                 });
                 Promise.all(attachmentPromises).then(resolve);
               } else {
+                console.log("Brak załączników"); // Debug log
                 resolve([]);
               }
             })
           ]).then(([bodyText, headers, attachments]) => {
+            console.log("Wszystkie dane pobrane pomyślnie"); // Debug log
             clearTimeout(timeout);
 
             // Przygotuj dane wiadomości
@@ -178,6 +190,7 @@
               body: JSON.stringify(payload)
             })
             .then(async res => {
+              console.log("Otrzymano odpowiedź od serwera:", res.status); // Debug log
               let responseText = await res.text();
               console.log("Odpowiedź serwera:", responseText); // Debug log
               let result;
@@ -205,8 +218,8 @@
               reportBtn.disabled = false;
             });
           }).catch(error => {
+            console.error("Błąd przetwarzania wiadomości:", error); // Debug log
             clearTimeout(timeout);
-            console.error("Błąd przetwarzania wiadomości:", error);
             showMessage(error.message || "Wystąpił nieoczekiwany błąd.", "error");
             loading.style.display = "none";
             reportBtn.disabled = false;
