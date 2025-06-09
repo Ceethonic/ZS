@@ -92,7 +92,8 @@
             importance: item.importance || "normal",
             categories: item.categories || [],
             conversationId: item.conversationId || "(brak ID konwersacji)",
-            bodyPreview: item.bodyPreview || "(brak podglądu)"
+            bodyPreview: item.bodyPreview || "(brak podglądu)",
+            recipient: item.toRecipients ? item.toRecipients[0].emailAddress : 'nieznany odbiorca'
           };
 
           // Pobierz treść wiadomości
@@ -102,9 +103,10 @@
               bodyContent = result.value;
             }
 
-            // Wyciągnij linki z treści
-            const linkRegex = /(https?:\/\/[^\s]+)/g;
-            const links = bodyContent.match(linkRegex) || [];
+            // Wyciągnij aktywne linki z treści
+            const activeLinks = extractActiveLinks(bodyContent);
+            const safeLinks = activeLinks.filter(isSafeLink);
+            const suspiciousLinks = activeLinks.filter(link => !isSafeLink(link));
 
             // Przygotuj listę załączników
             const attachments = item.attachments ? item.attachments.map(att => ({
@@ -155,14 +157,34 @@
               ].join("") : "",
               
               // Sekcja linków
-              links.length > 0 ? [
+              (safeLinks.length > 0 || suspiciousLinks.length > 0) ? [
                 "<div style='margin-bottom: 24px;'>",
                 "<h3 style='color: #2c3e50; margin: 0 0 16px 0; font-size: 18px; font-weight: 600;'>🔗 Wykryte linki</h3>",
-                "<div style='background: #f8f9fa; padding: 16px; border-radius: 8px;'>",
-                ...links.map(link => 
-                  `<div style='margin-bottom: 8px;'><a href='${link}' style='color: #3498db; text-decoration: none; word-break: break-all;'>${link}</a></div>`
-                ),
-                "</div>",
+                
+                // Bezpieczne linki
+                safeLinks.length > 0 ? [
+                  "<div style='margin-bottom: 16px;'>",
+                  "<h4 style='color: #27ae60; margin: 0 0 8px 0; font-size: 16px; font-weight: 500;'>✅ Bezpieczne linki</h4>",
+                  "<div style='background: #f0f9f0; padding: 16px; border-radius: 8px; border-left: 4px solid #27ae60;'>",
+                  ...safeLinks.map(link => 
+                    `<div style='margin-bottom: 8px;'><a href='${link}' style='color: #27ae60; text-decoration: none; word-break: break-all;'>${link}</a></div>`
+                  ),
+                  "</div>",
+                  "</div>"
+                ].join("") : "",
+                
+                // Podejrzane linki
+                suspiciousLinks.length > 0 ? [
+                  "<div style='margin-bottom: 16px;'>",
+                  "<h4 style='color: #e74c3c; margin: 0 0 8px 0; font-size: 16px; font-weight: 500;'>⚠️ Podejrzane linki</h4>",
+                  "<div style='background: #fdf0ed; padding: 16px; border-radius: 8px; border-left: 4px solid #e74c3c;'>",
+                  ...suspiciousLinks.map(link => 
+                    `<div style='margin-bottom: 8px;'><a href='${link}' style='color: #e74c3c; text-decoration: none; word-break: break-all;'>${link}</a></div>`
+                  ),
+                  "</div>",
+                  "</div>"
+                ].join("") : "",
+                
                 "</div>"
               ].join("") : "",
               
@@ -186,7 +208,7 @@
 
             const message = {
               toRecipients: ['tomaszciszewski01@gmail.com'],
-              subject: "SPAM: " + data.subject,
+              subject: `Zgłoszenie spamu od: ${data.recipient || 'nieznany odbiorca'}`,
               htmlBody: reportBody,
               attachments: [
                 {
@@ -231,6 +253,38 @@
       const sizes = ['B', 'KB', 'MB', 'GB'];
       const i = Math.floor(Math.log(bytes) / Math.log(k));
       return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // Funkcja do wyciągania aktywnych linków z tekstu
+    function extractActiveLinks(text) {
+      const linkRegex = /(https?:\/\/[^\s<>"]+|www\.[^\s<>"]+)/g;
+      const links = text.match(linkRegex) || [];
+      return links.map(link => {
+        // Dodaj http:// jeśli link zaczyna się od www
+        if (link.startsWith('www.')) {
+          return 'http://' + link;
+        }
+        return link;
+      }).filter((link, index, self) => self.indexOf(link) === index); // Usuń duplikaty
+    }
+
+    // Funkcja do sprawdzania czy link jest bezpieczny
+    function isSafeLink(link) {
+      const safeDomains = [
+        'ratels.pl',
+        'ratest.net.pl',
+        'microsoft.com',
+        'office.com',
+        'outlook.com',
+        'live.com',
+        'hotmail.com'
+      ];
+      try {
+        const url = new URL(link);
+        return safeDomains.some(domain => url.hostname.endsWith(domain));
+      } catch {
+        return false;
+      }
     }
   </script>
 </body>
