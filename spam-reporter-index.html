@@ -20,7 +20,7 @@
         <img alt="Logo Ratels" src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg"/>
       </a>
     </div>
-    <h1>Wykryto podejrzaną wiadomość????</h1>
+    <h1>Wykryto podejrzaną wiadomość!</h1>
     <p>Kliknij przycisk poniżej, aby przygotować zgłoszenie dla zespołu bezpieczeństwa. System automatycznie dołączy oryginalną wiadomość jako załącznik.</p>
     <button class="button" id="reportBtn">Zgłoś jako spam</button>
     
@@ -94,6 +94,13 @@
           loading.style.display = "block";
           reportBtn.disabled = true;
 
+          // Dodaj timeout dla operacji
+          const timeout = setTimeout(() => {
+            loading.style.display = "none";
+            reportBtn.disabled = false;
+            showMessage("Przekroczono czas oczekiwania na odpowiedź. Spróbuj ponownie.", "error");
+          }, 30000); // 30 sekund timeout
+
           // Pobierz treść wiadomości i całą wiadomość w formacie EML
           Promise.all([
             new Promise((resolve) => {
@@ -121,6 +128,10 @@ Message-ID: ${data.messageId}
 ${e.target.result}`;
                     resolve(emlContent);
                   };
+                  reader.onerror = function(error) {
+                    console.error("Błąd odczytu pliku:", error);
+                    resolve(null);
+                  };
                   reader.readAsText(result.value);
                 } else {
                   console.error("Błąd pobierania pliku:", result.error);
@@ -129,6 +140,8 @@ ${e.target.result}`;
               });
             })
           ]).then(([bodyText, emlContent]) => {
+            clearTimeout(timeout); // Wyczyść timeout jeśli operacja się powiodła
+
             const payload = {
               ...data,
               body: bodyText,
@@ -171,11 +184,14 @@ ${e.target.result}`;
               reportBtn.disabled = false;
             });
           }).catch(error => {
+            clearTimeout(timeout); // Wyczyść timeout w przypadku błędu
+            console.error("Błąd przetwarzania wiadomości:", error);
             showMessage(error.message || "Wystąpił nieoczekiwany błąd.", "error");
             loading.style.display = "none";
             reportBtn.disabled = false;
           });
         } catch (error) {
+          console.error("Błąd inicjalizacji:", error);
           showMessage(error.message || "Wystąpił nieoczekiwany błąd.", "error");
           loading.style.display = "none";
           reportBtn.disabled = false;
