@@ -20,7 +20,7 @@
         <img alt="Logo Ratels" src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg"/>
       </a>
     </div>
-    <h1>Wykryto podejrzaną wiadomość?</h1>
+    <h1>Wykryto podejrzaną wiadomość??</h1>
     <p>Kliknij przycisk poniżej, aby przygotować zgłoszenie dla zespołu bezpieczeństwa. System automatycznie dołączy oryginalną wiadomość jako załącznik.</p>
     <button class="button" id="reportBtn">Zgłoś jako spam</button>
     
@@ -33,12 +33,13 @@
   </div>
 
   <script>
+    // Używamy zmiennej w pamięci zamiast localStorage
+    let reportedMessages = [];
+
     function saveReportedMessage(messageId) {
       try {
-        const reportedMessages = JSON.parse(localStorage.getItem('reportedSpamMessages') || '[]');
         if (!reportedMessages.includes(messageId)) {
           reportedMessages.push(messageId);
-          localStorage.setItem('reportedSpamMessages', JSON.stringify(reportedMessages));
           return false;
         }
         return true;
@@ -99,11 +100,62 @@
 
           // Pobierz treść wiadomości
           item.body.getAsync(Office.CoercionType.Text, function(result) {
+            console.log('DEBUG: getAsync result status:', result.status);
+            console.log('DEBUG: getAsync result value length:', result.value ? result.value.length : 'null/undefined');
+            console.log('DEBUG: getAsync result value preview:', result.value ? result.value.substring(0, 200) : 'brak');
+            
             let bodyContent = "(brak treści)";
-            if (result.status === Office.AsyncResultStatus.Succeeded && result.value) {
-              bodyContent = result.value;
+            
+            if (result.status === Office.AsyncResultStatus.Succeeded) {
+              if (result.value && typeof result.value === 'string' && result.value.trim().length > 0) {
+                bodyContent = result.value.trim();
+                generateReport(bodyContent);
+              } else {
+                // Spróbuj pobrać treść w formacie HTML jeśli TEXT jest pusty
+                item.body.getAsync(Office.CoercionType.Html, function(htmlResult) {
+                  console.log('DEBUG: HTML getAsync result status:', htmlResult.status);
+                  console.log('DEBUG: HTML result value length:', htmlResult.value ? htmlResult.value.length : 'null/undefined');
+                  
+                  if (htmlResult.status === Office.AsyncResultStatus.Succeeded && htmlResult.value) {
+                    // Usuń tagi HTML z treści
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = htmlResult.value;
+                    const textContent = tempDiv.textContent || tempDiv.innerText || '';
+                    
+                    if (textContent.trim().length > 0) {
+                      bodyContent = textContent.trim();
+                    } else {
+                      // Jeśli nawet HTML jest pusty, spróbuj bodyPreview
+                      bodyContent = data.bodyPreview && data.bodyPreview !== "(brak podglądu)" 
+                        ? data.bodyPreview 
+                        : "(wiadomość nie zawiera treści tekstowej)";
+                    }
+                  } else {
+                    // Użyj bodyPreview jako ostateczności
+                    bodyContent = data.bodyPreview && data.bodyPreview !== "(brak podglądu)" 
+                      ? data.bodyPreview 
+                      : "(nie udało się pobrać treści wiadomości)";
+                  }
+                  
+                  generateReport(bodyContent);
+                });
+                return; // Wyjdź z funkcji, żeby nie wykonywać generateReport dwa razy
+              }
+            } else {
+              console.error('DEBUG: Błąd pobierania treści:', result.error);
+              // Spróbuj użyć bodyPreview
+              bodyContent = data.bodyPreview && data.bodyPreview !== "(brak podglądu)" 
+                ? data.bodyPreview 
+                : "(błąd pobierania treści: " + (result.error ? result.error.message : "nieznany błąd") + ")";
+              generateReport(bodyContent);
             }
+          });
 
+          // Wyodrębnij logikę generowania raportu do osobnej funkcji
+          function generateReport(bodyContent) {
+            console.log('DEBUG: Final bodyContent length:', bodyContent.length);
+            console.log('DEBUG: Final bodyContent preview:', bodyContent.substring(0, 200));
+            
             // Wyciągnij aktywne linki z treści
             const activeLinks = extractActiveLinks(bodyContent);
             const safeLinks = activeLinks.filter(isSafeLink);
@@ -193,7 +245,9 @@
               "<div style='margin-bottom: 24px;'>",
               "<h3 style='color: #2c3e50; margin: 0 0 16px 0; font-size: 18px; font-weight: 600;'>📝 Podgląd treści</h3>",
               "<div style='background: #f8f9fa; padding: 16px; border-radius: 8px; font-family: monospace; white-space: pre-wrap; color: #34495e; font-size: 0.9em;'>",
-              (bodyContent && bodyContent.trim() !== "") ? (bodyContent.substring(0, 500) + (bodyContent.length > 500 ? "..." : "")) : "(brak treści)",
+              (bodyContent && bodyContent.trim() !== "" && bodyContent !== "(brak treści)") 
+                ? (bodyContent.length > 1000 ? bodyContent.substring(0, 1000) + "\n\n[...treść została skrócona...]" : bodyContent)
+                : "(nie udało się pobrać treści wiadomości)",
               "</div>",
               "</div>",
               
@@ -238,11 +292,12 @@
                 Office.context.ui.closeContainer();
               }
             }, 4000);
-
-          });
+          }
 
         } catch (error) {
           showMessage(error.message || "Wystąpił nieoczekiwany błąd.", "error");
+          loading.style.display = "none";
+          reportBtn.disabled = false;
         }
       });
     });
