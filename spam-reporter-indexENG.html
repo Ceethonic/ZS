@@ -1,368 +1,372 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spam Reporter</title>
-    <link rel="stylesheet" href="https://static2.sharepointonline.com/files/fabric/office-ui-fabric-core/11.0.0/css/fabric.min.css"/>
-    <script src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js" type="text/javascript"></script>
-    <style>
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            margin: 0;
-            padding: 20px;
-            background: #f5f5f5;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-            color: #0078d4;
-        }
-        .report-button {
-            background: #0078d4;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            width: 100%;
-            transition: background 0.3s;
-        }
-        .report-button:hover {
-            background: #106ebe;
-        }
-        .report-button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-        .status {
-            margin-top: 20px;
-            padding: 10px;
-            border-radius: 4px;
-            text-align: center;
-        }
-        .success {
-            background: #dff6dd;
-            color: #107c10;
-        }
-        .error {
-            background: #fde7e9;
-            color: #d13438;
-        }
-        .warning {
-            background: #fff4ce;
-            color: #856404;
-        }
-        .loading {
-            display: none;
-            text-align: center;
-            margin: 20px 0;
-        }
-        .loading-spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #0078d4;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .report-section {
-            margin-top: 20px;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 6px;
-            border: 1px solid #e9ecef;
-        }
-        .report-section h3 {
-            margin-top: 0;
-            color: #0078d4;
-        }
-        .report-section pre {
-            background: white;
-            padding: 10px;
-            border-radius: 4px;
-            overflow-x: auto;
-        }
-        .link-section {
-            margin-top: 15px;
-        }
-        .link-section a {
-            color: #0078d4;
-            text-decoration: none;
-        }
-        .link-section a:hover {
-            text-decoration: underline;
-        }
-        .safe-link {
-            color: #107c10;
-        }
-        .suspicious-link {
-            color: #d13438;
-        }
-    </style>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1" name="viewport"/>
+  <title>Report Spam | Ratels Security</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js" type="text/javascript"></script>
+  <link href="styles.css" rel="stylesheet">
+  <style>
+    .lang-switcher {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+    }
+    .lang-switcher img {
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      text-align: center;
+    }
+    .logo-container {
+      margin-bottom: 30px;
+    }
+    .logo-container img {
+      max-width: 200px;
+      height: auto;
+    }
+    h1 {
+      color: #0078d4;
+      margin-bottom: 20px;
+    }
+    .button {
+      background: #0078d4;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .button:hover {
+      background: #106ebe;
+    }
+    .button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .loading {
+      display: none;
+      margin: 20px 0;
+      color: #666;
+    }
+    .message {
+      display: none;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+    }
+    .message.show {
+      display: block;
+    }
+    .message.success {
+      background: #dff6dd;
+      color: #107c10;
+    }
+    .message.error {
+      background: #fde7e9;
+      color: #d13438;
+    }
+    .message.warning {
+      background: #fff4ce;
+      color: #856404;
+    }
+    .footer {
+      margin-top: 40px;
+      color: #666;
+      font-size: 0.9em;
+    }
+    .footer a {
+      color: #0078d4;
+      text-decoration: none;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h2>Spam Reporter</h2>
-            <p>Report suspicious messages to our security team</p>
-        </div>
-        <button id="reportButton" class="report-button">Report as Spam</button>
-        <div id="loading" class="loading">
-            <div class="loading-spinner"></div>
-            <p>Preparing report...</p>
-        </div>
-        <div id="status" class="status" style="display: none;"></div>
+  <div class="lang-switcher">
+    <a href="spam-reporter-index.html" aria-label="Polish"><img alt="PL" src="https://flagcdn.com/pl.svg" style="margin-right: 6px; vertical-align: middle;" width="24"/></a>
+    <a href="spam-reporter-indexENG.html" aria-label="English"><img alt="EN" src="https://flagcdn.com/gb.svg" style="vertical-align: middle;" width="24"/></a>
+  </div>
+
+  <div class="container">
+    <div class="logo-container">
+      <a href="https://ratels.pl" target="_blank" aria-label="Ratels Homepage">
+        <img alt="Ratels Logo" src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg"/>
+      </a>
     </div>
+    <h1>Detected a Suspicious Message?</h1>
+    <p>Click the button below to prepare a report for the security team. The system will automatically attach the original message.</p>
+    <button class="button" id="reportBtn">Report as Spam</button>
 
-    <script>
-        Office.onReady(() => {
-            document.getElementById('reportButton').addEventListener('click', reportSpam);
-        });
+    <div id="loadingIndicator" class="loading">Analyzing message...</div>
+    <div id="resultMessage" class="message"></div>
 
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    <div class="footer">
+      <p>© 2025 Ratels Security • <a href="https://ratels.pl/polityka-prywatnosci/" target="_blank">Privacy Policy</a></p>
+    </div>
+  </div>
+
+  <script>
+    function saveReportedMessage(messageId) {
+      try {
+        const reportedMessages = JSON.parse(localStorage.getItem('reportedSpamMessages') || '[]');
+        if (!reportedMessages.includes(messageId)) {
+          reportedMessages.push(messageId);
+          localStorage.setItem('reportedSpamMessages', JSON.stringify(reportedMessages));
+          return false;
         }
+        return true;
+      } catch (e) {
+        console.error("Report history error:", e);
+        return false;
+      }
+    }
 
-        function extractActiveLinks(text) {
-            const linkRegex = /(https?:\/\/[^\s<>"]+|www\.[^\s<>"]+)/g;
-            const links = text.match(linkRegex) || [];
-            return [...new Set(links.map(link => 
-                link.startsWith('www.') ? 'http://' + link : link
-            ))];
-        }
+    function showMessage(text, type = 'success') {
+      const div = document.getElementById("resultMessage");
+      div.textContent = text;
+      div.className = 'message ' + type;
+      div.classList.add('show');
+      
+      // Automatically hide after 8 seconds
+      setTimeout(() => {
+        div.classList.remove('show');
+      }, 8000);
+    }
 
-        function isSafeLink(link) {
-            const safeDomains = [
-                'ratels.pl',
-                'microsoft.com',
-                'office.com',
-                'outlook.com',
-                'hotmail.com',
-                'live.com',
-                'msn.com',
-                'sharepoint.com',
-                'onedrive.com',
-                'teams.microsoft.com',
-                'ratest.net.pl'
-            ];
-            return safeDomains.some(domain => link.includes(domain));
-        }
+    Office.onReady(() => {
+      document.getElementById("reportBtn").addEventListener("click", async () => {
+        const loading = document.getElementById("loadingIndicator");
+        const reportBtn = document.getElementById("reportBtn");
+        
+        try {
+          const item = Office.context.mailbox.item;
+          if (!item) {
+            throw new Error("Unable to retrieve message details.");
+          }
 
-        async function reportSpam() {
-            const reportButton = document.getElementById('reportButton');
-            const loading = document.getElementById('loading');
-            const status = document.getElementById('status');
+          // First check message ID
+          const messageId = item.internetMessageId || "(no ID)";
+          if (saveReportedMessage(messageId)) {
+            showMessage("This message has already been reported.", "warning");
+            return;
+          }
 
-            try {
-                // Get message ID first
-                const item = await new Promise((resolve, reject) => {
-                    Office.context.mailbox.item.getAllInternetHeadersAsync((result) => {
-                        if (result.status === Office.AsyncResultStatus.Succeeded) {
-                            resolve(Office.context.mailbox.item);
-                        } else {
-                            reject(new Error('Failed to get message headers'));
-                        }
-                    });
-                });
+          // Only after validation show loading and start analysis
+          loading.style.display = "block";
+          reportBtn.disabled = true;
 
-                // Check if message was already reported
-                const messageId = item.itemId;
-                const reportedMessages = JSON.parse(localStorage.getItem('reportedMessages') || '[]');
-                if (reportedMessages.includes(messageId)) {
-                    status.className = 'status warning';
-                    status.textContent = 'This message has already been reported as spam.';
-                    status.style.display = 'block';
-                    return;
-                }
+          const data = {
+            subject: item.subject || "(no subject)",
+            sender: item.from ? (item.from.emailAddress || item.from.displayName) : "(unknown sender)",
+            receivedTime: item.dateTimeCreated ? new Date(item.dateTimeCreated).toLocaleString() : "(unknown time)",
+            messageId: messageId,
+            hasAttachments: item.attachments && item.attachments.length > 0,
+            attachmentCount: item.attachments ? item.attachments.length : 0,
+            importance: item.importance || "normal",
+            categories: item.categories || [],
+            conversationId: item.conversationId || "(no conversation ID)",
+            bodyPreview: item.bodyPreview || "(no preview)",
+            recipient: item.toRecipients ? item.toRecipients[0].emailAddress : 'unknown recipient'
+          };
 
-                // Show loading indicator
-                loading.style.display = 'block';
-                reportButton.disabled = true;
-
-                // Get message details
-                const data = {
-                    subject: item.subject || "(no subject)",
-                    sender: item.from ? item.from.emailAddress : "(unknown sender)",
-                    receivedTime: item.dateTimeCreated ? new Date(item.dateTimeCreated).toLocaleString() : "(unknown time)",
-                    messageId: item.itemId || "(no message ID)",
-                    importance: item.importance || "(unknown importance)",
-                    categories: item.categories || [],
-                    conversationId: item.conversationId || "(no conversation ID)",
-                    bodyPreview: item.bodyPreview || "(no preview)",
-                    recipient: item.toRecipients ? item.toRecipients[0].emailAddress : 'unknown recipient'
-                };
-
-                // Get message body
-                const body = await new Promise((resolve, reject) => {
-                    Office.context.mailbox.item.body.getAsync(Office.CoercionType.Text, (result) => {
-                        if (result.status === Office.AsyncResultStatus.Succeeded) {
-                            resolve(result.value);
-                        } else {
-                            reject(new Error('Failed to get message body'));
-                        }
-                    });
-                });
-
-                // Extract links from body
-                const links = extractActiveLinks(body);
-                const safeLinks = links.filter(isSafeLink);
-                const suspiciousLinks = links.filter(link => !isSafeLink(link));
-
-                // Get attachments
-                const attachments = await new Promise((resolve, reject) => {
-                    Office.context.mailbox.item.attachments.getAsync((result) => {
-                        if (result.status === Office.AsyncResultStatus.Succeeded) {
-                            resolve(result.value);
-                        } else {
-                            reject(new Error('Failed to get attachments'));
-                        }
-                    });
-                });
-
-                // Prepare report body
-                const reportBody = `
-                    <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                        <div style="background: linear-gradient(135deg, #0078d4, #106ebe); color: white; padding: 20px; border-radius: 8px 8px 0 0; margin: -20px -20px 20px -20px;">
-                            <h2 style="margin: 0;">Spam Report</h2>
-                            <p style="margin: 5px 0 0 0; opacity: 0.9;">Suspicious message details</p>
-                        </div>
-                        
-                        <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
-                            <h3 style="color: #0078d4; margin-top: 0;">Basic Information</h3>
-                            <p><strong>Subject:</strong> ${data.subject}</p>
-                            <p><strong>From:</strong> ${data.sender}</p>
-                            <p><strong>To:</strong> ${data.recipient}</p>
-                            <p><strong>Received:</strong> ${data.receivedTime}</p>
-                            <p><strong>Message ID:</strong> ${data.messageId}</p>
-                        </div>
-
-                        <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
-                            <h3 style="color: #0078d4; margin-top: 0;">Message Metadata</h3>
-                            <p><strong>Importance:</strong> ${data.importance}</p>
-                            <p><strong>Categories:</strong> ${data.categories.join(', ') || 'None'}</p>
-                            <p><strong>Conversation ID:</strong> ${data.conversationId}</p>
-                        </div>
-
-                        ${attachments.length > 0 ? `
-                            <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
-                                <h3 style="color: #0078d4; margin-top: 0;">Attachments</h3>
-                                <ul style="list-style: none; padding: 0; margin: 0;">
-                                    ${attachments.map(att => `
-                                        <li style="padding: 8px; background: white; margin-bottom: 8px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                                            <span style="font-weight: bold;">${att.name}</span>
-                                            ${att.size ? `<span style="color: #666; margin-left: 10px;">${formatFileSize(att.size)}</span>` : ''}
-                                            ${att.contentType ? `<span style="color: #666; margin-left: 10px;">${att.contentType}</span>` : ''}
-                                        </li>
-                                    `).join('')}
-                                </ul>
-                            </div>
-                        ` : ''}
-
-                        ${links.length > 0 ? `
-                            <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
-                                <h3 style="color: #0078d4; margin-top: 0;">Detected Links</h3>
-                                ${safeLinks.length > 0 ? `
-                                    <div style="margin-bottom: 15px;">
-                                        <h4 style="color: #107c10; margin: 0 0 10px 0;">Safe Links</h4>
-                                        <ul style="list-style: none; padding: 0; margin: 0;">
-                                            ${safeLinks.map(link => `
-                                                <li style="padding: 8px; background: white; margin-bottom: 8px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                                                    <a href="${link}" target="_blank" style="color: #107c10; text-decoration: none;">${link}</a>
-                                                </li>
-                                            `).join('')}
-                                        </ul>
-                                    </div>
-                                ` : ''}
-                                ${suspiciousLinks.length > 0 ? `
-                                    <div>
-                                        <h4 style="color: #d13438; margin: 0 0 10px 0;">Suspicious Links</h4>
-                                        <ul style="list-style: none; padding: 0; margin: 0;">
-                                            ${suspiciousLinks.map(link => `
-                                                <li style="padding: 8px; background: white; margin-bottom: 8px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                                                    <a href="${link}" target="_blank" style="color: #d13438; text-decoration: none;">${link}</a>
-                                                </li>
-                                            `).join('')}
-                                        </ul>
-                                    </div>
-                                ` : ''}
-                            </div>
-                        ` : ''}
-
-                        <div style="background: #f8f9fa; padding: 15px; border-radius: 6px;">
-                            <h3 style="color: #0078d4; margin-top: 0;">Message Content</h3>
-                            <div style="background: white; padding: 15px; border-radius: 4px; border: 1px solid #e9ecef;">
-                                <pre style="margin: 0; white-space: pre-wrap; font-family: 'Segoe UI', Arial, sans-serif;">${body}</pre>
-                            </div>
-                        </div>
-
-                        <div style="text-align: center; margin-top: 20px; color: #666; font-size: 0.9em;">
-                            <p>This report was generated automatically by Ratels Security Spam Reporter</p>
-                        </div>
-                    </div>
-                `;
-
-                // Create new message
-                const message = {
-                    toRecipients: ['tomaszciszewski01@gmail.com'],
-                    subject: `Spam report from: ${data.recipient || 'unknown recipient'}`,
-                    htmlBody: reportBody,
-                    attachments: [
-                        {
-                            type: Office.MailboxEnums.AttachmentType.Item,
-                            itemId: item.itemId,
-                            name: "spam_message.eml"
-                        }
-                    ]
-                };
-
-                // Display new message form
-                Office.context.mailbox.displayNewMessageForm(message);
-
-                // Add message to reported list
-                reportedMessages.push(messageId);
-                localStorage.setItem('reportedMessages', JSON.stringify(reportedMessages));
-
-                // Show success message
-                status.className = 'status success';
-                status.textContent = 'Report prepared successfully. Please review and send the message.';
-                status.style.display = 'block';
-
-                // Hide loading indicator
-                loading.style.display = 'none';
-
-                // Close the add-in pane after 3 seconds
-                setTimeout(() => {
-                    Office.context.ui.messageParent(JSON.stringify({ type: 'close' }));
-                }, 3000);
-
-            } catch (error) {
-                console.error('Error:', error);
-                status.className = 'status error';
-                status.textContent = 'Error: ' + error.message;
-                status.style.display = 'block';
-                loading.style.display = 'none';
-                reportButton.disabled = false;
+          // Get message body
+          item.body.getAsync(Office.CoercionType.Text, function(result) {
+            let bodyContent = "(no content)";
+            if (result.status === Office.AsyncResultStatus.Succeeded && result.value) {
+              bodyContent = result.value;
             }
+
+            // Extract active links from content
+            const activeLinks = extractActiveLinks(bodyContent);
+            const safeLinks = activeLinks.filter(isSafeLink);
+            const suspiciousLinks = activeLinks.filter(link => !isSafeLink(link));
+
+            // Prepare attachments list
+            const attachments = item.attachments ? item.attachments.map(att => ({
+              name: att.name || att.fileName || '(no name)',
+              size: att.size ? formatFileSize(att.size) : 'unknown',
+              type: att.contentType || 'unknown'
+            })) : [];
+
+            const reportBody = [
+              "<div style='font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 24px;'>",
+              "<div style='background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 24px; border-radius: 12px; margin-bottom: 24px;'>",
+              "<h2 style='color: #1a1a1a; margin: 0 0 16px 0; font-size: 24px; font-weight: 600;'>🚨 Spam Message Report</h2>",
+              "<p style='color: #4a4a4a; line-height: 1.6; margin: 0;'>Detailed report of suspicious message:</p>",
+              "</div>",
+              
+              "<div style='background-color: white; padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);'>",
+              
+              // Basic information section
+              "<div style='margin-bottom: 24px;'>",
+              "<h3 style='color: #2c3e50; margin: 0 0 16px 0; font-size: 18px; font-weight: 600;'>📧 Basic Information</h3>",
+              "<table style='width:100%; border-collapse: collapse;'>",
+              `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:500; color: #2c3e50; width: 30%;'>Subject:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${data.subject}</td></tr>`,
+              `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:500; color: #2c3e50;'>Sender:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${data.sender}</td></tr>`,
+              `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:500; color: #2c3e50;'>Received:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${data.receivedTime}</td></tr>`,
+              "</table>",
+              "</div>",
+              
+              // Message metadata section
+              "<div style='margin-bottom: 24px;'>",
+              "<h3 style='color: #2c3e50; margin: 0 0 16px 0; font-size: 18px; font-weight: 600;'>🔍 Message Metadata</h3>",
+              "<table style='width:100%; border-collapse: collapse;'>",
+              `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:500; color: #2c3e50; width: 30%;'>Message ID:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e; font-family: monospace;'>${data.messageId}</td></tr>`,
+              `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:500; color: #2c3e50;'>Conversation ID:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e; font-family: monospace;'>${data.conversationId}</td></tr>`,
+              `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; font-weight:500; color: #2c3e50;'>Priority:</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${data.importance}</td></tr>`,
+              "</table>",
+              "</div>",
+              
+              // Attachments section
+              attachments.length > 0 ? [
+                "<div style='margin-bottom: 24px;'>",
+                "<h3 style='color: #2c3e50; margin: 0 0 16px 0; font-size: 18px; font-weight: 600;'>📎 Attachments</h3>",
+                "<table style='width:100%; border-collapse: collapse;'>",
+                ...attachments.map(att => 
+                  `<tr><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #34495e;'>${att.name}</td><td style='padding:12px; border-bottom:1px solid #e9ecef; color: #7f8c8d; font-size: 0.9em;'>${att.size} • ${att.type}</td></tr>`
+                ),
+                "</table>",
+                "</div>"
+              ].join("") : "",
+              
+              // Links section
+              (safeLinks.length > 0 || suspiciousLinks.length > 0) ? [
+                "<div style='margin-bottom: 24px;'>",
+                "<h3 style='color: #2c3e50; margin: 0 0 16px 0; font-size: 18px; font-weight: 600;'>🔗 Detected Links</h3>",
+                
+                // Safe links
+                safeLinks.length > 0 ? [
+                  "<div style='margin-bottom: 16px;'>",
+                  "<h4 style='color: #27ae60; margin: 0 0 8px 0; font-size: 16px; font-weight: 500;'>✅ Safe Links</h4>",
+                  "<div style='background: #f0f9f0; padding: 16px; border-radius: 8px; border-left: 4px solid #27ae60;'>",
+                  ...safeLinks.map(link => 
+                    `<div style='margin-bottom: 8px;'><a href='${link}' style='color: #27ae60; text-decoration: none; word-break: break-all;'>${link}</a></div>`
+                  ),
+                  "</div>",
+                  "</div>"
+                ].join("") : "",
+                
+                // Suspicious links
+                suspiciousLinks.length > 0 ? [
+                  "<div style='margin-bottom: 16px;'>",
+                  "<h4 style='color: #e74c3c; margin: 0 0 8px 0; font-size: 16px; font-weight: 500;'>⚠️ Suspicious Links</h4>",
+                  "<div style='background: #fdf0ed; padding: 16px; border-radius: 8px; border-left: 4px solid #e74c3c;'>",
+                  ...suspiciousLinks.map(link => 
+                    `<div style='margin-bottom: 8px;'><a href='${link}' style='color: #e74c3c; text-decoration: none; word-break: break-all;'>${link}</a></div>`
+                  ),
+                  "</div>",
+                  "</div>"
+                ].join("") : "",
+                
+                "</div>"
+              ].join("") : "",
+              
+              // Content preview
+              "<div style='margin-bottom: 24px;'>",
+              "<h3 style='color: #2c3e50; margin: 0 0 16px 0; font-size: 18px; font-weight: 600;'>📝 Content Preview</h3>",
+              "<div style='background: #f8f9fa; padding: 16px; border-radius: 8px; font-family: monospace; white-space: pre-wrap; color: #34495e; font-size: 0.9em;'>",
+              bodyContent.substring(0, 500) + (bodyContent.length > 500 ? "..." : ""),
+              "</div>",
+              "</div>",
+              
+              // Footer
+              "<div style='margin-top: 32px; padding-top: 24px; border-top: 1px solid #e9ecef; text-align: center; color: #7f8c8d; font-size: 0.9em;'>",
+              "<p style='margin: 0;'>Thank you for your vigilance and assistance in maintaining our network security.</p>",
+              "<p style='margin: 8px 0 0 0;'>The original message has been attached as an EML file.</p>",
+              "</div>",
+              
+              "</div>",
+              "</div>"
+            ].join("");
+
+            const message = {
+              toRecipients: ['tomaszciszewski01@gmail.com'],
+              subject: `Spam report from: ${data.recipient || 'unknown recipient'}`,
+              htmlBody: reportBody,
+              attachments: [
+                {
+                  type: Office.MailboxEnums.AttachmentType.Item,
+                  itemId: item.itemId,
+                  name: "spam_message.eml"
+                }
+              ]
+            };
+
+            // Create new message
+            Office.context.mailbox.displayNewMessageForm({
+              toRecipients: message.toRecipients,
+              subject: message.subject,
+              htmlBody: message.htmlBody,
+              attachments: message.attachments
+            });
+
+            showMessage("Report has been prepared. Send the message to complete the process.", "success");
+            loading.style.display = "none";
+            reportBtn.disabled = false;
+
+            // Close the pane after a short delay
+            setTimeout(() => {
+              if (Office.context.ui && Office.context.ui.closeContainer) {
+                Office.context.ui.closeContainer();
+              }
+            }, 4000);
+
+          });
+
+        } catch (error) {
+          showMessage(error.message || "An unexpected error occurred.", "error");
         }
-    </script>
+      });
+    });
+
+    // Helper function to format file size
+    function formatFileSize(bytes) {
+      if (!bytes) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // Helper function to extract active links
+    function extractActiveLinks(text) {
+      const linkRegex = /(https?:\/\/[^\s<>"]+|www\.[^\s<>"]+)/g;
+      const links = text.match(linkRegex) || [];
+      return links.map(link => {
+        if (link.startsWith('www.')) {
+          return 'http://' + link;
+        }
+        return link;
+      }).filter((link, index, self) => self.indexOf(link) === index);
+    }
+
+    // Helper function to check if link is safe
+    function isSafeLink(link) {
+      const safeDomains = [
+        'ratels.pl',
+        'ratest.net.pl',
+        'microsoft.com',
+        'office.com',
+        'outlook.com',
+        'live.com',
+        'hotmail.com'
+      ];
+      try {
+        const url = new URL(link);
+        return safeDomains.some(domain => url.hostname.endsWith(domain));
+      } catch {
+        return false;
+      }
+    }
+  </script>
 </body>
 </html>
