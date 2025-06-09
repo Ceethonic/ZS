@@ -119,31 +119,31 @@
             ]
           };
 
-          await new Promise((resolve, reject) => {
-            Office.context.mailbox.item.sendMail(message, {
-              asyncContext: null
-            }, (result) => {
-              if (result.status === Office.AsyncResultStatus.Succeeded) {
-                showMessage("Zgłoszenie zostało wysłane pomyślnie.", "success");
-                resolve();
-              } else {
-                reject(new Error("Wystąpił błąd podczas wysyłania zgłoszenia."));
-              }
-            });
-          });
-
-          // Zamknij panel po krótkim opóźnieniu
-          setTimeout(() => {
-            if (Office.context.ui && Office.context.ui.closeContainer) {
-              Office.context.ui.closeContainer();
+          Office.context.mailbox.displayNewMessageForm({
+            toRecipients: message.toRecipients,
+            subject: message.subject,
+            htmlBody: message.htmlBody,
+            attachments: message.attachments,
+            async: true
+          }, (result) => {
+            if (result.status === Office.AsyncResultStatus.Succeeded) {
+              showMessage("Zgłoszenie zostało wysłane pomyślnie.", "success");
+            } else {
+              showMessage("Wystąpił błąd podczas wysyłania zgłoszenia.", "error");
             }
-          }, 4000);
+            loading.style.display = "none";
+            reportBtn.disabled = false;
+
+            // Zamknij panel po krótkim opóźnieniu
+            setTimeout(() => {
+              if (Office.context.ui && Office.context.ui.closeContainer) {
+                Office.context.ui.closeContainer();
+              }
+            }, 4000);
+          });
 
         } catch (error) {
           showMessage(error.message || "Wystąpił nieoczekiwany błąd.", "error");
-        } finally {
-          loading.style.display = "none";
-          reportBtn.disabled = false;
         }
       });
     });
