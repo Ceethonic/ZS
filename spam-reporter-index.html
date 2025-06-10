@@ -116,26 +116,32 @@
     function getCustomHeaders(item) {
       return new Promise((resolve) => {
         try {
+          console.log('DEBUG: Rozpoczynam pobieranie niestandardowych nagłówków');
           item.internetHeaders.getAsync((result) => {
             const customHeaders = [];
             
             if (result.status === Office.AsyncResultStatus.Succeeded && result.value) {
-              console.log('DEBUG: Analizuję nagłówki dla X-*');
+              console.log('DEBUG: Pobrano nagłówki internetowe, liczba:', result.value.length);
               
               for (let header of result.value) {
+                console.log('DEBUG: Sprawdzam nagłówek:', header.name);
                 if (header.name && header.name.startsWith('X-') && 
                     !header.name.toLowerCase().startsWith('x-ms-exchange')) {
                   customHeaders.push({
                     name: header.name,
                     value: header.value || '(brak wartości)'
                   });
-                  console.log('DEBUG: Znaleziono niestandardowy nagłówek:', header.name);
+                  console.log('DEBUG: Dodano niestandardowy nagłówek:', header.name, '=', header.value);
                 }
               }
             } else {
-              console.log('DEBUG: Nie udało się pobrać nagłówków dla X-*');
+              console.log('DEBUG: Nie udało się pobrać nagłówków dla X-*. Status:', result.status);
+              if (result.error) {
+                console.error('DEBUG: Błąd pobierania nagłówków:', result.error);
+              }
             }
             
+            console.log('DEBUG: Końcowa lista niestandardowych nagłówków:', customHeaders);
             resolve(customHeaders);
           });
         } catch (error) {
@@ -190,6 +196,8 @@
           // Pobierz niestandardowe nagłówki X-*
           const customHeaders = await getCustomHeaders(item);
           console.log('DEBUG: Niestandardowe nagłówki:', customHeaders);
+          console.log('DEBUG: Liczba niestandardowych nagłówków:', customHeaders.length);
+          console.log('DEBUG: Szczegóły niestandardowych nagłówków:', JSON.stringify(customHeaders, null, 2));
 
           // Sprawdź czy wiadomość była już zgłaszana
           if (saveReportedMessage(messageId)) {
