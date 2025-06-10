@@ -20,7 +20,7 @@
         <img alt="Logo Ratels" src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg"/>
       </a>
     </div>
-    <h1>Wykryto podejrzaną wiadomość?</h1>
+    <h1>Wykryto podejrzaną wiadomość??</h1>
     <p>Kliknij przycisk poniżej, aby przygotować zgłoszenie dla zespołu bezpieczeństwa. System automatycznie dołączy oryginalną wiadomość jako załącznik.</p>
     <button class="button" id="reportBtn">Zgłoś jako spam</button>
     
@@ -65,9 +65,18 @@
     function getMessageIdFromHeaders(item) {
       return new Promise((resolve) => {
         try {
-          // Spróbuj pobrać nagłówki internetowe
+          console.log('DEBUG: Rozpoczynam pobieranie Message-ID');
+          
+          // Najpierw sprawdź internetMessageId
+          if (item.internetMessageId) {
+            console.log('DEBUG: Znaleziono internetMessageId:', item.internetMessageId);
+            resolve(item.internetMessageId);
+            return;
+          }
+
+          // Jeśli nie ma internetMessageId, spróbuj pobrać z nagłówków
           item.internetHeaders.getAsync((result) => {
-            let messageId = "(brak Message-ID)";
+            let messageId = null;
             
             if (result.status === Office.AsyncResultStatus.Succeeded && result.value) {
               console.log('DEBUG: Pobrano nagłówki internetowe');
@@ -75,37 +84,36 @@
               // Szukaj Message-ID w nagłówkach
               for (let header of result.value) {
                 if (header.name && header.name.toLowerCase() === 'message-id') {
-                  messageId = header.value || "(pusty Message-ID)";
-                  console.log('DEBUG: Znaleziono Message-ID:', messageId);
+                  messageId = header.value;
+                  console.log('DEBUG: Znaleziono Message-ID w nagłówkach:', messageId);
                   break;
                 }
               }
+            }
+
+            // Jeśli nadal nie mamy Message-ID, spróbuj innych źródeł
+            if (!messageId) {
+              console.log('DEBUG: Nie znaleziono Message-ID w nagłówkach, próbuję alternatywnych źródeł');
               
-              if (messageId === "(brak Message-ID)") {
-                console.log('DEBUG: Nie znaleziono Message-ID w nagłówkach');
-                // Fallback do item.internetMessageId jeśli dostępny
-                if (item.internetMessageId) {
-                  messageId = item.internetMessageId;
-                  console.log('DEBUG: Używam fallback internetMessageId:', messageId);
-                }
-              }
-            } else {
-              console.log('DEBUG: Błąd pobierania nagłówków lub brak dostępu:', result.error);
-              // Fallback do dostępnych właściwości
-              if (item.internetMessageId) {
-                messageId = item.internetMessageId;
-              } else if (item.itemId) {
+              if (item.itemId) {
                 messageId = `itemId:${item.itemId}`;
+                console.log('DEBUG: Używam itemId jako Message-ID:', messageId);
               } else {
                 messageId = `generated:${Date.now()}`;
+                console.log('DEBUG: Generuję nowy Message-ID:', messageId);
               }
             }
-            
-            resolve(messageId);
+
+            // Usuń znaki < > z Message-ID jeśli istnieją
+            if (messageId) {
+              messageId = messageId.replace(/[<>]/g, '');
+              console.log('DEBUG: Finalne Message-ID po czyszczeniu:', messageId);
+            }
+
+            resolve(messageId || '(brak Message-ID)');
           });
         } catch (error) {
           console.error('DEBUG: Błąd podczas pobierania Message-ID:', error);
-          // Fallback ID
           const fallbackId = item.internetMessageId || item.itemId || `error:${Date.now()}`;
           resolve(fallbackId);
         }
@@ -424,4 +432,5 @@
     }
   </script>
 </body>
+</html>
 </html>
