@@ -20,7 +20,7 @@
         <img alt="Logo Ratels" src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg"/>
       </a>
     </div>
-    <h1>Wykryto podejrzaną wiadomość?</h1>
+    <h1>?Wykryto podejrzaną wiadomość?</h1>
     <p>Kliknij przycisk poniżej, aby przygotować zgłoszenie dla zespołu bezpieczeństwa. System automatycznie dołączy oryginalną wiadomość jako załącznik.</p>
     <button class="button" id="reportBtn">Zgłoś jako spam</button>
     
@@ -185,6 +185,8 @@
         const loading = document.getElementById("loadingIndicator");
         const reportBtn = document.getElementById("reportBtn");
         
+        console.log("Kliknięto przycisk zgłoszenia spamu");
+        let finished = false;
         try {
           const item = Office.context.mailbox.item;
           if (!item) {
@@ -261,6 +263,7 @@
                   Office.context.ui.closeContainer();
                 }
               }, 4000);
+              finished = true;
               return;
             } else {
               // Fallback: użyj przekazania (forward) wiadomości
@@ -276,6 +279,7 @@
                   Office.context.ui.closeContainer();
                 }
               }, 4000);
+              finished = true;
               return;
             }
           }
@@ -292,6 +296,7 @@
             showMessage("Ta wiadomość została już wcześniej zgłoszona.", "warning");
             loading.style.display = "none";
             reportBtn.disabled = false;
+            finished = true;
             return;
           }
 
@@ -505,56 +510,62 @@
                 Office.context.ui.closeContainer();
               }
             }, 4000);
+            finished = true;
           }
 
         } catch (error) {
+          console.error("Błąd w obsłudze przycisku:", error);
           showMessage(error.message || "Wystąpił nieoczekiwany błąd.", "error");
-          loading.style.display = "none";
-          reportBtn.disabled = false;
+        } finally {
+          // Fallback: zawsze odblokuj przycisk i loader
+          if (!finished) {
+            reportBtn.disabled = false;
+            loading.style.display = "none";
+          }
         }
       });
-    });
 
-    // Dodaj funkcję pomocniczą do formatowania rozmiaru pliku
-    function formatFileSize(bytes) {
-      if (!bytes) return '0 B';
-      const k = 1024;
-      const sizes = ['B', 'KB', 'MB', 'GB'];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    }
-
-    // Funkcja do wyciągania aktywnych linków z tekstu
-    function extractActiveLinks(text) {
-      const linkRegex = /(https?:\/\/[^\s<>"]+|www\.[^\s<>"]+)/g;
-      const links = text.match(linkRegex) || [];
-      return links.map(link => {
-        // Dodaj http:// jeśli link zaczyna się od www
-        if (link.startsWith('www.')) {
-          return 'http://' + link;
-        }
-        return link;
-      }).filter((link, index, self) => self.indexOf(link) === index); // Usuń duplikaty
-    }
-
-    // Funkcja do sprawdzania czy link jest bezpieczny
-    function isSafeLink(link) {
-      const safeDomains = [
-        'ratels.pl',
-        'ratest.net.pl',
-        'microsoft.com',
-        'office.com',
-        'outlook.com',
-        'live.com',
-        'hotmail.com'
-      ];
-      try {
-        const url = new URL(link);
-        return safeDomains.some(domain => url.hostname.endsWith(domain));
-      } catch {
-        return false;
+      // Dodaj funkcję pomocniczą do formatowania rozmiaru pliku
+      function formatFileSize(bytes) {
+        if (!bytes) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
       }
-    }
+
+      // Funkcja do wyciągania aktywnych linków z tekstu
+      function extractActiveLinks(text) {
+        const linkRegex = /(https?:\/\/[^\s<>"]+|www\.[^\s<>"]+)/g;
+        const links = text.match(linkRegex) || [];
+        return links.map(link => {
+          // Dodaj http:// jeśli link zaczyna się od www
+          if (link.startsWith('www.')) {
+            return 'http://' + link;
+          }
+          return link;
+        }).filter((link, index, self) => self.indexOf(link) === index); // Usuń duplikaty
+      }
+
+      // Funkcja do sprawdzania czy link jest bezpieczny
+      function isSafeLink(link) {
+        const safeDomains = [
+          'ratels.pl',
+          'ratest.net.pl',
+          'microsoft.com',
+          'office.com',
+          'outlook.com',
+          'live.com',
+          'hotmail.com'
+        ];
+        try {
+          const url = new URL(link);
+          return safeDomains.some(domain => url.hostname.endsWith(domain));
+        } catch {
+          return false;
+        }
+      }
+    });
   </script>
 </body>
 </html>
