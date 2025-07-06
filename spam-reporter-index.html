@@ -37,7 +37,7 @@
       if (Office.context.mailbox && Office.context.mailbox.diagnostics) {
         const version = Office.context.mailbox.diagnostics.hostVersion;
         // Outlook 2016: 16.x.xxxx.xxxx, Outlook 2019: 17.x.xxxx.xxxx (czasem 16.x dla 2019, więc sprawdzamy oba)
-        return version && (version.startsWith('16.') || version.startsWith('17.'));
+        return version && (version.startsWith('16.') || version.startsWith('14.'));
       }
       return false;
     }
