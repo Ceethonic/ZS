@@ -33,115 +33,154 @@
   </div>
 
   <script>
-    // Używamy localStorage zamiast zmiennej w pamięci
-    function saveReportedMessage(messageId) {
-      try {
-        const reportedMessages = JSON.parse(localStorage.getItem('reportedMessages') || '[]');
-        if (!reportedMessages.includes(messageId)) {
-          reportedMessages.push(messageId);
-          localStorage.setItem('reportedMessages', JSON.stringify(reportedMessages));
-          return false;
-        }
-        return true;
-      } catch (e) {
-        console.error("Błąd historii zgłoszeń:", e);
-        return false;
+    function isUnsupportedOutlook() {
+      if (Office.context.mailbox && Office.context.mailbox.diagnostics) {
+        const version = Office.context.mailbox.diagnostics.hostVersion;
+        // Outlook 2016: 16.x.xxxx.xxxx, Outlook 2019: 17.x.xxxx.xxxx (czasem 16.x dla 2019, więc sprawdzamy oba)
+        return version && (version.startsWith('16.') || version.startsWith('17.'));
       }
-    }
-
-    function showMessage(text, type = 'success') {
-      const div = document.getElementById("resultMessage");
-      div.textContent = text;
-      div.className = 'message ' + type;
-      div.classList.add('show');
-      
-      // Automatyczne ukrycie po 8 sekundach
-      setTimeout(() => {
-        div.classList.remove('show');
-      }, 8000);
-    }
-
-    // Funkcja do wyciągania Message-ID z nagłówków
-    function getMessageIdFromHeaders(item) {
-      return new Promise((resolve) => {
-        try {
-          console.log('DEBUG: Rozpoczynam pobieranie Message-ID');
-          
-          // Najpierw sprawdź internetMessageId
-          if (item.internetMessageId) {
-            console.log('DEBUG: Znaleziono internetMessageId:', item.internetMessageId);
-            resolve(item.internetMessageId);
-            return;
-          }
-
-          // Jeśli nie ma internetMessageId, spróbuj pobrać z nagłówków
-          item.internetHeaders.getAsync((result) => {
-            let messageId = null;
-            
-            if (result.status === Office.AsyncResultStatus.Succeeded && result.value) {
-              console.log('DEBUG: Pobrano nagłówki internetowe');
-              
-              // Szukaj Message-ID w nagłówkach
-              for (let header of result.value) {
-                if (header.name && header.name.toLowerCase() === 'message-id') {
-                  messageId = header.value;
-                  console.log('DEBUG: Znaleziono Message-ID w nagłówkach:', messageId);
-                  break;
-                }
-              }
-            }
-
-            // Jeśli nadal nie mamy Message-ID, spróbuj innych źródeł
-            if (!messageId) {
-              console.log('DEBUG: Nie znaleziono Message-ID w nagłówkach, próbuję alternatywnych źródeł');
-              
-              if (item.itemId) {
-                messageId = `itemId:${item.itemId}`;
-                console.log('DEBUG: Używam itemId jako Message-ID:', messageId);
-              } else {
-                messageId = `generated:${Date.now()}`;
-                console.log('DEBUG: Generuję nowy Message-ID:', messageId);
-              }
-            }
-
-            // Usuń znaki < > z Message-ID jeśli istnieją
-            if (messageId) {
-              messageId = messageId.replace(/[<>]/g, '');
-              console.log('DEBUG: Finalne Message-ID po czyszczeniu:', messageId);
-            }
-
-            resolve(messageId || '(brak Message-ID)');
-          });
-        } catch (error) {
-          console.error('DEBUG: Błąd podczas pobierania Message-ID:', error);
-          const fallbackId = item.internetMessageId || item.itemId || `error:${Date.now()}`;
-          resolve(fallbackId);
-        }
-      });
-    }
-
-    // Funkcja do pobierania wszystkich nagłówków do debugowania
-    function debugAllHeaders(item) {
-      return new Promise((resolve) => {
-        try {
-          item.internetHeaders.getAsync((result) => {
-            if (result.status === Office.AsyncResultStatus.Succeeded && result.value) {
-              console.log('=== DEBUG: Wszystkie nagłówki ===');
-              result.value.forEach(header => {
-                console.log(`${header.name}: ${header.value}`);
-              });
-              console.log('=== KONIEC DEBUG NAGŁÓWKÓW ===');
-            }
-            resolve();
-          });
-        } catch (error) {
-          console.error('DEBUG: Błąd debugowania nagłówków:', error);
-          resolve();
-        }
-      });
+      return false;
     }
 
     Office.onReady(() => {
+      if (isUnsupportedOutlook()) {
+        // Ukryj całą zawartość dodatku
+        const container = document.querySelector('.container');
+        if (container) container.style.display = 'none';
+
+        // Wyświetl komunikat
+        const msg = document.createElement('div');
+        msg.style.cssText = 'color: #cc0000; font-size: 18px; padding: 32px; text-align: center;';
+        msg.innerHTML = 'Ten dodatek nie jest obsługiwany w Outlook 2016 ani 2019.<br>Proszę użyć nowszej wersji Outlooka lub OWA.';
+        document.body.appendChild(msg);
+
+        // Opcjonalnie zamknij panel po kilku sekundach
+        setTimeout(() => {
+          if (Office.context.ui && Office.context.ui.closeContainer) {
+            Office.context.ui.closeContainer();
+          }
+        }, 5000);
+
+        return; // Nie uruchamiaj dalszej logiki dodatku
+      }
+
+      // Używamy localStorage zamiast zmiennej w pamięci
+      function saveReportedMessage(messageId) {
+        try {
+          const reportedMessages = JSON.parse(localStorage.getItem('reportedMessages') || '[]');
+          if (!reportedMessages.includes(messageId)) {
+            reportedMessages.push(messageId);
+            localStorage.setItem('reportedMessages', JSON.stringify(reportedMessages));
+            return false;
+          }
+          return true;
+        } catch (e) {
+          console.error("Błąd historii zgłoszeń:", e);
+          return false;
+        }
+      }
+
+      function showMessage(text, type = 'success') {
+        const div = document.getElementById("resultMessage");
+        div.textContent = text;
+        div.className = 'message ' + type;
+        div.classList.add('show');
+        
+        // Automatyczne ukrycie po 8 sekundach
+        setTimeout(() => {
+          div.classList.remove('show');
+        }, 8000);
+      }
+
+      // Funkcja do wyciągania Message-ID z nagłówków
+      function getMessageIdFromHeaders(item) {
+        return new Promise((resolve) => {
+          try {
+            console.log('DEBUG: Rozpoczynam pobieranie Message-ID');
+            
+            // Najpierw sprawdź internetMessageId
+            if (item.internetMessageId) {
+              console.log('DEBUG: Znaleziono internetMessageId:', item.internetMessageId);
+              resolve(item.internetMessageId);
+              return;
+            }
+
+            // Jeśli nie ma internetMessageId, spróbuj pobrać z nagłówków
+            item.internetHeaders.getAsync((result) => {
+              let messageId = null;
+              
+              if (result.status === Office.AsyncResultStatus.Succeeded && result.value) {
+                console.log('DEBUG: Pobrano nagłówki internetowe');
+                
+                // Szukaj Message-ID w nagłówkach
+                for (let header of result.value) {
+                  if (header.name && header.name.toLowerCase() === 'message-id') {
+                    messageId = header.value;
+                    console.log('DEBUG: Znaleziono Message-ID w nagłówkach:', messageId);
+                    break;
+                  }
+                }
+              }
+
+              // Jeśli nadal nie mamy Message-ID, spróbuj innych źródeł
+              if (!messageId) {
+                console.log('DEBUG: Nie znaleziono Message-ID w nagłówkach, próbuję alternatywnych źródeł');
+                
+                if (item.itemId) {
+                  messageId = `itemId:${item.itemId}`;
+                  console.log('DEBUG: Używam itemId jako Message-ID:', messageId);
+                } else {
+                  messageId = `generated:${Date.now()}`;
+                  console.log('DEBUG: Generuję nowy Message-ID:', messageId);
+                }
+              }
+
+              // Usuń znaki < > z Message-ID jeśli istnieją
+              if (messageId) {
+                messageId = messageId.replace(/[<>]/g, '');
+                console.log('DEBUG: Finalne Message-ID po czyszczeniu:', messageId);
+              }
+
+              resolve(messageId || '(brak Message-ID)');
+            });
+          } catch (error) {
+            console.error('DEBUG: Błąd podczas pobierania Message-ID:', error);
+            const fallbackId = item.internetMessageId || item.itemId || `error:${Date.now()}`;
+            resolve(fallbackId);
+          }
+        });
+      }
+
+      // Funkcja do pobierania wszystkich nagłówków do debugowania
+      function debugAllHeaders(item) {
+        return new Promise((resolve) => {
+          try {
+            item.internetHeaders.getAsync((result) => {
+              if (result.status === Office.AsyncResultStatus.Succeeded && result.value) {
+                console.log('=== DEBUG: Wszystkie nagłówki ===');
+                result.value.forEach(header => {
+                  console.log(`${header.name}: ${header.value}`);
+                });
+                console.log('=== KONIEC DEBUG NAGŁÓWKÓW ===');
+              }
+              resolve();
+            });
+          } catch (error) {
+            console.error('DEBUG: Błąd debugowania nagłówków:', error);
+            resolve();
+          }
+        });
+      }
+
+      // Dodaj funkcję wykrywającą Outlook 2016
+      function isOutlook2016() {
+        if (Office.context.mailbox && Office.context.mailbox.diagnostics) {
+          const version = Office.context.mailbox.diagnostics.hostVersion;
+          return version && version.startsWith('16.');
+        }
+        return false;
+      }
+
       document.getElementById("reportBtn").addEventListener("click", async () => {
         const loading = document.getElementById("loadingIndicator");
         const reportBtn = document.getElementById("reportBtn");
@@ -154,6 +193,92 @@
 
           loading.style.display = "block";
           reportBtn.disabled = true;
+
+          // Wykryj Outlook 2016 i obsłuż odpowiednio
+          if (isOutlook2016()) {
+            // Sprawdź, czy można dodać załącznik typu Item (API 1.8+)
+            if (Office.context.requirements.isSetSupported('Mailbox', '1.8')) {
+              // Przygotuj uproszczone dane
+              const data = {
+                subject: item.subject || "(brak tematu)",
+                sender: item.from ? (item.from.emailAddress || item.from.displayName) : "(nieznany nadawca)",
+                receivedTime: item.dateTimeCreated ? new Date(item.dateTimeCreated).toLocaleString() : "(nieznany czas)",
+                bodyPreview: item.bodyPreview || "(brak podglądu)",
+                reporter: Office.context.mailbox.userProfile.emailAddress || 'nieznany zgłaszający'
+              };
+
+              let bodyContent = data.bodyPreview && data.bodyPreview !== "(brak podglądu)" ? data.bodyPreview : "(nie udało się pobrać treści wiadomości)";
+
+              const reportBody = [
+                "<div style='font-family: Arial, Helvetica, sans-serif !important; max-width: 800px; margin: 0 auto; padding: 24px; background-color: #ffffff !important; color: #000000 !important;'>",
+                "<div style='background-color: #f8f9fa !important; padding: 24px; border-radius: 12px; margin-bottom: 24px; border: 1px solid #e9ecef;'>",
+                "<h2 style='color: #000000 !important; margin: 0 0 16px 0; font-size: 24px; font-weight: bold;'>🚨 Zgłoszenie wiadomości spam</h2>",
+                "<p style='color: #333333 !important; line-height: 1.6; margin: 0;'>Szczegółowy raport podejrzanej wiadomości (zgłoszenie wysłane z Outlook 2016, oryginalna wiadomość została dołączona jako EML):</p>",
+                "</div>",
+                "<div style='background-color: #ffffff !important; padding: 24px; border-radius: 12px; border: 2px solid #e9ecef;'>",
+                "<div style='margin-bottom: 24px;'>",
+                "<h3 style='color: #000000 !important; margin: 0 0 16px 0; font-size: 18px; font-weight: bold;'>📧 Podstawowe informacje</h3>",
+                "<table style='width:100%; border-collapse: collapse; background-color: #ffffff !important;'>",
+                `<tr><td style='padding:12px; border-bottom:2px solid #e9ecef; font-weight:bold; color: #000000 !important; width: 30%; background-color: #f8f9fa !important;'>Temat:</td><td style='padding:12px; border-bottom:2px solid #e9ecef; color: #333333 !important; background-color: #ffffff !important;'>${data.subject}</td></tr>`,
+                `<tr><td style='padding:12px; border-bottom:2px solid #e9ecef; font-weight:bold; color: #000000 !important; background-color: #f8f9fa !important;'>Nadawca:</td><td style='padding:12px; border-bottom:2px solid #e9ecef; color: #333333 !important; background-color: #ffffff !important;'>${data.sender}</td></tr>`,
+                `<tr><td style='padding:12px; border-bottom:2px solid #e9ecef; font-weight:bold; color: #000000 !important; background-color: #f8f9fa !important;'>Data otrzymania:</td><td style='padding:12px; border-bottom:2px solid #e9ecef; color: #333333 !important; background-color: #ffffff !important;'>${data.receivedTime}</td></tr>`,
+                "</table>",
+                "</div>",
+                "<div style='margin-bottom: 24px;'>",
+                "<h3 style='color: #000000 !important; margin: 0 0 16px 0; font-size: 18px; font-weight: bold;'>📝 Podgląd treści</h3>",
+                "<div style='background-color: #f8f9fa !important; padding: 16px; border-radius: 8px; font-family: Courier, monospace; white-space: pre-wrap; color: #000000 !important; font-size: 14px; border: 2px solid #e9ecef; overflow-wrap: break-word;'>",
+                (bodyContent && bodyContent.trim() !== "" && bodyContent !== "(brak treści)") 
+                  ? (bodyContent.length > 1000 ? bodyContent.substring(0, 1000) + "\n\n[...treść została skrócona...]" : bodyContent)
+                  : "(nie udało się pobrać treści wiadomości)",
+                "</div>",
+                "</div>",
+                "<div style='margin-top: 32px; padding-top: 24px; border-top: 2px solid #e9ecef; text-align: center; color: #666666 !important; font-size: 0.9em; background-color: #ffffff !important;'>",
+                "<p style='margin: 0; color: #666666 !important;'>Dziękujemy za czujność i pomoc w utrzymaniu bezpieczeństwa naszej sieci.</p>",
+                "<p style='margin: 8px 0 0 0; color: #008000 !important;'><b>Załącznik:</b> Oryginalna wiadomość została dołączona jako EML.</p>",
+                "</div>",
+                "</div>",
+                "</div>"
+              ].join("");
+
+              Office.context.mailbox.displayNewMessageForm({
+                toRecipients: ['a.berowski@ratels.pl'],
+                subject: `Zgłoszenie spamu od: ${data.reporter}`,
+                htmlBody: reportBody,
+                attachments: [
+                  {
+                    type: Office.MailboxEnums.AttachmentType.Item,
+                    itemId: item.itemId,
+                    name: "wiadomosc_spam.eml"
+                  }
+                ]
+              });
+
+              showMessage("Zgłoszenie zostało przygotowane. Wyślij wiadomość, aby zakończyć proces. (Outlook 2016, EML dołączony)", "success");
+              loading.style.display = "none";
+              reportBtn.disabled = false;
+              setTimeout(() => {
+                if (Office.context.ui && Office.context.ui.closeContainer) {
+                  Office.context.ui.closeContainer();
+                }
+              }, 4000);
+              return;
+            } else {
+              // Fallback: użyj przekazania (forward) wiadomości
+              item.displayForwardForm({
+                toRecipients: ['a.berowski@ratels.pl'],
+                htmlBody: "<p>Proszę o analizę załączonej podejrzanej wiadomości.</p>"
+              });
+              showMessage("Otworzono okno przekazania wiadomości. Wyślij, aby zgłosić spam (Outlook 2016, EML jako forward).", "warning");
+              loading.style.display = "none";
+              reportBtn.disabled = false;
+              setTimeout(() => {
+                if (Office.context.ui && Office.context.ui.closeContainer) {
+                  Office.context.ui.closeContainer();
+                }
+              }, 4000);
+              return;
+            }
+          }
 
           // DEBUG: Pokaż wszystkie nagłówki
           await debugAllHeaders(item);
@@ -432,5 +557,4 @@
     }
   </script>
 </body>
-</html>
 </html>
