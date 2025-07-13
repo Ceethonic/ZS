@@ -16,7 +16,7 @@
 
   <div class="container">
     <div class="logo-container">
-      <a href="https://ratels.pl" target="_blank" aria-label="Ratels Home Page">
+      <a href="https://ratels.pl" target="_blank" aria-label="Ratels Homepage">
         <img alt="Ratels Logo" src="https://ratels.pl/wp-content/themes/ratels/img/logo-przezrozczyste.svg"/>
       </a>
     </div>
@@ -33,9 +33,7 @@
   </div>
 
   <script>
-    // Global variable for license status
-    let isLicenseValid = true;
-    
+    // We use localStorage instead of in-memory variable
     function saveReportedMessage(messageId) {
       try {
         const reportedMessages = JSON.parse(localStorage.getItem('reportedMessages') || '[]');
@@ -83,7 +81,7 @@
             if (result.status === Office.AsyncResultStatus.Succeeded && result.value) {
               console.log('DEBUG: Retrieved internet headers');
               
-              // Look for Message-ID in headers
+              // Search for Message-ID in headers
               for (let header of result.value) {
                 if (header.name && header.name.toLowerCase() === 'message-id') {
                   messageId = header.value;
@@ -95,7 +93,7 @@
 
             // If still no Message-ID, try other sources
             if (!messageId) {
-              console.log('DEBUG: No Message-ID found in headers, trying alternative sources');
+              console.log('DEBUG: Message-ID not found in headers, trying alternative sources');
               
               if (item.itemId) {
                 messageId = `itemId:${item.itemId}`;
@@ -115,14 +113,14 @@
             resolve(messageId || '(no Message-ID)');
           });
         } catch (error) {
-          console.error('DEBUG: Error during Message-ID retrieval:', error);
+          console.error('DEBUG: Error retrieving Message-ID:', error);
           const fallbackId = item.internetMessageId || item.itemId || `error:${Date.now()}`;
           resolve(fallbackId);
         }
       });
     }
 
-    // Function to get all headers for debugging
+    // Function to retrieve all headers for debugging
     function debugAllHeaders(item) {
       return new Promise((resolve) => {
         try {
@@ -188,7 +186,7 @@
 
           console.log('DEBUG: messageId:', data.messageId, 'bodyPreview:', data.bodyPreview);
 
-          // Get message content
+          // Get message body
           item.body.getAsync(Office.CoercionType.Text, function(result) {
             console.log('DEBUG: getAsync result status:', result.status);
             console.log('DEBUG: getAsync result value length:', result.value ? result.value.length : 'null/undefined');
@@ -236,7 +234,7 @@
               // Try to use bodyPreview
               bodyContent = data.bodyPreview && data.bodyPreview !== "(no preview)" 
                 ? data.bodyPreview 
-                : "(error retrieving content: " + (result.error ? result.error.message : "unknown error") + ")";
+                : "(content retrieval error: " + (result.error ? result.error.message : "unknown error") + ")";
               generateReport(bodyContent);
             }
           });
@@ -273,7 +271,7 @@
               "<table style='width:100%; border-collapse: collapse; background-color: #ffffff !important;'>",
               `<tr><td style='padding:12px; border-bottom:2px solid #e9ecef; font-weight:bold; color: #000000 !important; width: 30%; background-color: #f8f9fa !important;'>Subject:</td><td style='padding:12px; border-bottom:2px solid #e9ecef; color: #333333 !important; background-color: #ffffff !important;'>${data.subject}</td></tr>`,
               `<tr><td style='padding:12px; border-bottom:2px solid #e9ecef; font-weight:bold; color: #000000 !important; background-color: #f8f9fa !important;'>Sender:</td><td style='padding:12px; border-bottom:2px solid #e9ecef; color: #333333 !important; background-color: #ffffff !important;'>${data.sender}</td></tr>`,
-              `<tr><td style='padding:12px; border-bottom:2px solid #e9ecef; font-weight:bold; color: #000000 !important; background-color: #f8f9fa !important;'>Received:</td><td style='padding:12px; border-bottom:2px solid #e9ecef; color: #333333 !important; background-color: #ffffff !important;'>${data.receivedTime}</td></tr>`,
+              `<tr><td style='padding:12px; border-bottom:2px solid #e9ecef; font-weight:bold; color: #000000 !important; background-color: #f8f9fa !important;'>Received Date:</td><td style='padding:12px; border-bottom:2px solid #e9ecef; color: #333333 !important; background-color: #ffffff !important;'>${data.receivedTime}</td></tr>`,
               "</table>",
               "</div>",
               
@@ -281,7 +279,7 @@
               "<div style='margin-bottom: 24px;'>",
               "<h3 style='color: #000000 !important; margin: 0 0 16px 0; font-size: 18px; font-weight: bold;'>🔍 Message Metadata</h3>",
               "<table style='width:100%; border-collapse: collapse; background-color: #ffffff !important;'>",
-              `<tr><td style='padding:12px; border-bottom:2px solid #e9ecef; font-weight:bold; color: #000000 !important; width: 30%; background-color: #f8f9fa !important;'>Message ID:</td><td style='padding:12px; border-bottom:2px solid #e9ecef; color: #333333 !important; font-family: Courier, monospace; background-color: #ffffff !important; word-break: break-all;'>${data.messageId}</td></tr>`,
+              `<tr><td style='padding:12px; border-bottom:2px solid #e9ecef; font-weight:bold; color: #000000 !important; width: 30%; background-color: #f8f9fa !important;'>Message-ID:</td><td style='padding:12px; border-bottom:2px solid #e9ecef; color: #333333 !important; font-family: Courier, monospace; background-color: #ffffff !important; word-break: break-all;'>${data.messageId}</td></tr>`,
               `<tr><td style='padding:12px; border-bottom:2px solid #e9ecef; font-weight:bold; color: #000000 !important; background-color: #f8f9fa !important;'>Conversation ID:</td><td style='padding:12px; border-bottom:2px solid #e9ecef; color: #333333 !important; font-family: Courier, monospace; background-color: #ffffff !important;'>${data.conversationId}</td></tr>`,
               `<tr><td style='padding:12px; border-bottom:2px solid #e9ecef; font-weight:bold; color: #000000 !important; background-color: #f8f9fa !important;'>Priority:</td><td style='padding:12px; border-bottom:2px solid #e9ecef; color: #333333 !important; background-color: #ffffff !important;'>${data.importance}</td></tr>`,
               "</table>",
@@ -336,7 +334,7 @@
               "<h3 style='color: #000000 !important; margin: 0 0 16px 0; font-size: 18px; font-weight: bold;'>📝 Content Preview</h3>",
               "<div style='background-color: #f8f9fa !important; padding: 16px; border-radius: 8px; font-family: Courier, monospace; white-space: pre-wrap; color: #000000 !important; font-size: 14px; border: 2px solid #e9ecef; overflow-wrap: break-word;'>",
               (bodyContent && bodyContent.trim() !== "" && bodyContent !== "(no content)") 
-                ? (bodyContent.length > 1000 ? bodyContent.substring(0, 1000) + "\n\n[...content has been shortened...]" : bodyContent)
+                ? (bodyContent.length > 1000 ? bodyContent.substring(0, 1000) + "\n\n[...content has been truncated...]" : bodyContent)
                 : "(failed to retrieve message content)",
               "</div>",
               "</div>",
@@ -352,8 +350,8 @@
             ].join("");
 
             const message = {
-              toRecipients: ['tomaszciszewski01@gmail.com'],
-              subject: `${!isLicenseValid ? '[LICENSE EXPIRED] ' : ''}Spam report from: ${data.reporter}`,
+              toRecipients: ['spam@mbank.pl'],
+              subject: `Spam report from: ${data.reporter}`,
               htmlBody: reportBody,
               attachments: [
                 {
@@ -397,23 +395,11 @@
       .then(res => res.json())
       .then(data => {
         if (!data.valid) {
-          isLicenseValid = false;
-          // Tłumaczenie komunikatów z polskiego na angielski
-          const translatedMessage = translateLicenseMessage(data.message);
-          showMessage('WARNING: ' + translatedMessage, 'warning');
+          showMessage('WARNING: ' + data.message, 'warning');
         }
       });
 
-    // Funkcja tłumacząca komunikaty licencji z polskiego na angielski
-    function translateLicenseMessage(polishMessage) {
-      // Tłumacz tylko komunikat o wygaśnięciu licencji
-      if (polishMessage === 'Licencja wygasła!') {
-        return 'License has expired!';
-      }
-      return polishMessage; // Pozostałe komunikaty pozostaw w oryginalnej wersji
-    }
-
-    // Add helper function for file size formatting
+    // Add helper function to format file size
     function formatFileSize(bytes) {
       if (!bytes) return '0 B';
       const k = 1024;
