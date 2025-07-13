@@ -395,9 +395,21 @@
       .then(res => res.json())
       .then(data => {
         if (!data.valid) {
-          showMessage('WARNING: ' + data.message, 'warning');
+          isLicenseValid = false;
+          // Translate messages from Polish to English
+          const translatedMessage = translateLicenseMessage(data.message);
+          showMessage('WARNING: ' + translatedMessage, 'warning');
         }
       });
+
+    // Function to translate license messages from Polish to English
+    function translateLicenseMessage(polishMessage) {
+      // Translate only the license expiration message
+      if (polishMessage === 'Licencja wygasła!') {
+        return 'License has expired!';
+      }
+      return polishMessage; // Keep other messages in original version
+    }
 
     // Add helper function to format file size
     function formatFileSize(bytes) {
