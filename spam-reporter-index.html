@@ -390,6 +390,15 @@
       });
     });
 
+    // --- Sprawdzenie statusu licencji z backendu ---
+    fetch('https://spam.cezz.pl/api/license-status')
+      .then(res => res.json())
+      .then(data => {
+        if (!data.valid) {
+          showMessage('UWAGA: ' + data.message, 'warning');
+        }
+      });
+
     // Dodaj funkcję pomocniczą do formatowania rozmiaru pliku
     function formatFileSize(bytes) {
       if (!bytes) return '0 B';
@@ -432,5 +441,4 @@
     }
   </script>
 </body>
-</html>
 </html>
