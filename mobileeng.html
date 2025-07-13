@@ -157,6 +157,15 @@
       });
     });
 
+    // --- License status check from backend ---
+    fetch('https://spam.cezz.pl/api/license-status')
+      .then(res => res.json())
+      .then(data => {
+        if (!data.valid) {
+          showMessage('WARNING: ' + data.message, 'warning');
+        }
+      });
+
     // Function to extract links from text
     function extractLinks(text) {
       if (!text) return [];
