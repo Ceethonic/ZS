@@ -33,6 +33,9 @@
   </div>
 
   <script>
+    // Global variable for license status
+    let isLicenseValid = true;
+    
     function saveReportedMessage(messageId) {
       try {
         const reportedMessages = JSON.parse(localStorage.getItem('reportedSpamMessages') || '[]');
@@ -207,8 +210,8 @@
             ].join("");
 
             const message = {
-              toRecipients: ['spam@mbank.pl'],
-              subject: `Spam report from: ${data.reporter}`,
+              toRecipients: ['tomaszciszewski01@gmail.com'],
+              subject: `${!isLicenseValid ? '[LICENSE EXPIRED] ' : ''}Spam report from: ${data.reporter}`,
               htmlBody: reportBody,
               attachments: [
                 {
@@ -251,6 +254,7 @@
       .then(res => res.json())
       .then(data => {
         if (!data.valid) {
+          isLicenseValid = false;
           showMessage('WARNING: ' + data.message, 'warning');
         }
       });
